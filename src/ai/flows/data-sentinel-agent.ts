@@ -19,8 +19,6 @@ const DataSentinelAgentOutputSchema = z.object({
   summary: z.string().describe('A high-level summary of the market analysis.'),
   onchainAnalysis: z.string().describe('Detailed analysis of on-chain data points.'),
   offchainAnalysis: z.string().describe('Detailed analysis of off-chain data points.'),
-  onchainLog: z.string().describe('A log of the on-chain data fetching process.'),
-  offchainLog: z.string().describe('A log of the off-chain data fetching process.'),
 });
 export type DataSentinelAgentOutput = z.infer<typeof DataSentinelAgentOutputSchema>;
 
@@ -28,25 +26,48 @@ export async function dataSentinelAgent(input: DataSentinelAgentInput): Promise<
   return dataSentinelAgentFlow(input);
 }
 
+// Simulated Tool: In a real application, this would fetch live data from external APIs.
+const getMarketData = ai.defineTool(
+  {
+    name: 'getMarketData',
+    description: 'Fetches on-chain and off-chain market data for the Sei network, including sentiment, whale movements, and NFT activity.',
+    inputSchema: z.object({
+      asset: z.string().describe("The asset to focus on, e.g., 'SEI'"),
+    }),
+    outputSchema: z.object({
+      onChainData: z.string(),
+      offChainData: z.string(),
+    }),
+  },
+  async ({ asset }) => {
+    // This is where you would integrate with live APIs like Rivalz, Hive, etc.
+    // For the hackathon, we simulate the data that these tools would provide.
+    const onChainData = `Whale wallet '0xabc...def' just acquired 1.2M ${asset}. Top 5 NFT collections related to ${asset} have seen a 15% increase in floor price. Memecoin 'SEIYAN' shows a 40% increase in volume.`;
+    const offChainData = `Social media sentiment for ${asset} is 'Very Bullish' following the announcement of the v2 network upgrade. Major tech influencers are discussing the news. GitHub activity shows a spike in commits to the core protocol.`;
+    return { onChainData, offChainData };
+  }
+);
+
+
 const analysisPrompt = ai.definePrompt({
   name: 'dataSentinelAnalysisPrompt',
+  tools: [getMarketData], // Provide the tool to the AI
   input: { schema: DataSentinelAgentInputSchema },
   output: { schema: DataSentinelAgentOutputSchema },
   prompt: `You are the Data Sentinel, an expert market analyst for the Sei network.
-  
+
   Your task is to provide a detailed, realistic, and actionable intelligence brief based on the user's query.
   
-  Generate a:
+  To do this, you MUST use the 'getMarketData' tool to fetch the latest on-chain and off-chain information.
+  
+  Once you have the data from the tool, synthesize it into:
   1.  **Summary**: A high-level overview of the current market sentiment.
-  2.  **On-Chain Analysis**: Specific, believable on-chain data points. Mention whale wallets, NFT floor prices, and token inflows for popular Sei assets. Be creative and specific (e.g., mention wallet addresses like '0x123...abc', NFT collections like 'Sei-gulls', and memecoins like 'SEIYAN').
-  3.  **Off-Chain Analysis**: Believable off-chain data points. Mention social media sentiment, developer activity on GitHub, and news about network upgrades or partnerships.
+  2.  **On-Chain Analysis**: Specific, believable on-chain data points based on the tool's output.
+  3.  **Off-Chain Analysis**: Believable off-chain data points based on the tool's output.
   
   The user's query is: "{{query}}"
-  
-  For the 'onchainLog' and 'offchainLog' fields in the output, just return the simulated log messages as provided below.
   `,
 });
-
 
 const dataSentinelAgentFlow = ai.defineFlow(
   {
@@ -55,28 +76,16 @@ const dataSentinelAgentFlow = ai.defineFlow(
     outputSchema: DataSentinelAgentOutputSchema,
   },
   async (input) => {
-    // 1. Fetch off-chain data from Rivalz Oracles (simulated).
-    const offchainLog = "Queried Rivalz Oracles for social media sentiment (SEI, memecoins), GitHub developer activity, and upcoming network upgrade news.";
-    
-    // 2. Fetch on-chain data via custom Sei MCP Server (simulated).
-    const onchainLog = "Queried custom Sei MCP Server for whale wallet accumulation, NFT collection floor price changes, and memecoin inflows.";
-    
-    // 3. Analyze and synthesize the data using the AI prompt.
     const { output } = await analysisPrompt(input);
     
     if (!output) {
       throw new Error("Failed to generate analysis from the AI model.");
     }
 
-    // 4. Store the data hash on a Sei native contract (simulated).
-    // This creates a verifiable, onchain data layer.
-
     return { 
       summary: output.summary,
       onchainAnalysis: output.onchainAnalysis,
       offchainAnalysis: output.offchainAnalysis,
-      onchainLog: onchainLog,
-      offchainLog: offchainLog,
     };
   }
 );

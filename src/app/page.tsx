@@ -67,6 +67,7 @@ export default function DashboardPage() {
     setIsConnecting(true);
     addActivity("Connecting to Compass Wallet...", <Wallet className="text-blue-400" />);
     try {
+      // @ts-ignore
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       const address = accounts[0];
       setWalletAddress(address);
@@ -74,7 +75,15 @@ export default function DashboardPage() {
       
       addActivity("Fetching portfolio data...", <DatabaseZap className="text-blue-400" />);
       await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
-      // setPortfolioData([]);
+      const connectedPortfolioData = [
+        { month: "January", value: 18600 },
+        { month: "February", value: 30500 },
+        { month: "March", value: 23700 },
+        { month: "April", value: 27800 },
+        { month: "May", value: 20000 },
+        { month: "June", value: 24900 },
+      ];
+      setPortfolioData(connectedPortfolioData);
       addActivity("Portfolio data loaded.", <DatabaseZap className="text-green-400" />);
       
       toast({
@@ -103,23 +112,14 @@ export default function DashboardPage() {
       return;
     }
     setAnalysisLoading(true);
-    addActivity("Orchestrator: Goal received - 'Get market data'.", <Cpu className="text-purple-400" />);
+    setAnalysisResult(null);
+    addActivity("Orchestrator: Goal received.", <Cpu className="text-purple-400" />, "Goal: Get up-to-date onchain and offchain market data.");
     addActivity("Orchestrator: Delegating to Data Sentinel...", <Send className="text-purple-400" />);
     
     try {
       const result = await dataSentinelAgent({ query: "Get a comprehensive market overview with a focus on SEI and memecoin sentiment" });
-      
-      addActivity("Data Sentinel: Fetching off-chain data from Rivalz Oracles...", <DatabaseZap className="text-blue-400" />, result.offchainLog);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      addActivity("Data Sentinel: Fetching on-chain data via custom MCP Server...", <DatabaseZap className="text-blue-400" />, result.onchainLog);
-      await new Promise(resolve => setTimeout(resolve, 1500)); 
-      
-      addActivity("Data Sentinel: Synthesizing data...", <BrainCircuit className="text-blue-400" />);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      setAnalysisResult(result);
       addActivity("Data Sentinel: Analysis complete. Brief updated.", <BrainCircuit className="text-green-400" />);
+      setAnalysisResult(result);
     } catch (error) {
       console.error(error);
       toast({
@@ -234,12 +234,13 @@ export default function DashboardPage() {
       } else {
         addActivity(`DeFi Agent: Initiating A2A payment via Crossmint GOAT SDK...`, <Banknote className="text-blue-400" />);
         result = await defiPaymentsAgent({ action, details });
+        addActivity(`DeFi Agent: Payment processed via Crossmint.`, <Banknote className="text-green-400" />, result.crossmintLog);
       }
 
       await new Promise(resolve => setTimeout(resolve, 1000));
       addActivity(`DeFi Agent: Submitting transaction via Crossmint/ElizaOS...`, <Banknote className="text-blue-400" />);
       
-      setPaymentStatus(result.crossmintLog);
+      setPaymentStatus(result.status);
       addActivity(`DeFi Agent: Action successful.`, <Banknote className="text-green-400" />, `Tx: ${result.transactionId.substring(0,12)}...`);
     } catch (error) {
       console.error(error);
@@ -295,9 +296,9 @@ export default function DashboardPage() {
               <CardContent>
                  {analysisLoading ? (
                   <div className="space-y-2">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="w-full h-4" />
+                    <Skeleton className="w-full h-4" />
+                    <Skeleton className="w-3/4 h-4" />
                   </div>
                 ) : analysisResult ? (
                   <div className="space-y-4 text-sm">
@@ -344,8 +345,8 @@ export default function DashboardPage() {
                 />
                  {strategyLoading ? (
                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      <Skeleton className="h-10 w-full" />
-                      <Skeleton className="h-10 w-full" />
+                      <Skeleton className="w-full h-10" />
+                      <Skeleton className="w-full h-10" />
                    </div>
                   ) : strategies.length > 0 && (
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
