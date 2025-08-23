@@ -16,7 +16,13 @@ const DataSentinelAgentInputSchema = z.object({
 export type DataSentinelAgentInput = z.infer<typeof DataSentinelAgentInputSchema>;
 
 const DataSentinelAgentOutputSchema = z.object({
-  analysis: z.string().describe('The synthesized analysis from on-chain and off-chain data.'),
+  summary: z.string().describe('A high-level summary of the market analysis.'),
+  onchainAnalysis: z.string().describe('Detailed analysis of on-chain data points.'),
+  offchainAnalysis: z.string().describe('Detailed analysis of off-chain data points.'),
+  references: z.array(z.object({
+    title: z.string(),
+    url: z.string(),
+  })).describe('A list of reference links for the user.'),
   onchainLog: z.string().describe('A log of the on-chain data fetching process.'),
   offchainLog: z.string().describe('A log of the off-chain data fetching process.'),
 });
@@ -35,20 +41,30 @@ const dataSentinelAgentFlow = ai.defineFlow(
   async (input) => {
     // 1. Fetch off-chain data from Rivalz Oracles (simulated).
     const offchainLog = "Queried Rivalz Oracles for social media sentiment (SEI, memecoins), GitHub developer activity, and upcoming network upgrade news.";
-    const offchainData = { sentiment: "cautiously optimistic", devActivity: "high", news: "v2 upgrade next month" };
-
+    
     // 2. Fetch on-chain data via custom Sei MCP Server (simulated).
     const onchainLog = "Queried custom Sei MCP Server for whale wallet accumulation, NFT collection floor price changes, and memecoin inflows.";
-    const onchainData = { whaleActivity: "net accumulation", nftTrend: "stable", memecoinTrend: "rising" };
     
     // 3. Analyze and synthesize the data.
-    const analysis = `Overall market sentiment is ${offchainData.sentiment}, driven by ${offchainData.devActivity} developer activity and news of a ${offchainData.news}. On-chain, whale wallets are showing ${onchainData.whaleActivity}, NFT floors are ${onchainData.nftTrend}, and memecoin interest is ${onchainData.memecoinTrend}.`;
-
-    // 4. Store the data hash on a Sei native contract (simulated).
+    const summary = "Overall market sentiment is cautiously optimistic, driven by high developer activity and news of a v2 upgrade next month. On-chain, whale wallets are showing net accumulation, NFT floors are stable, and memecoin interest is rising.";
+    const offchainAnalysis = "Off-chain sentiment from social platforms shows a 15% increase in positive mentions for SEI over the last 7 days. Developer activity on GitHub remains robust, with three major repositories showing consistent commits. A confirmed v2 network upgrade is scheduled for next month, which is driving speculative interest.";
+    const onchainAnalysis = "On-chain data confirms the positive sentiment. Whale wallet '0x123...abc' has accumulated over 500,000 SEI in the past 48 hours. Floor prices for the top 5 Sei NFT collections have remained stable with a slight uptick in volume. Memecoin 'SEIYAN' has seen a 30% increase in token inflows, indicating heightened retail interest.";
+    
+    // 4. Provide reference links (simulated).
+    const references = [
+      { title: "CryptoAnalyst Pro: SEI v2 Upgrade Confirmed", url: "#" },
+      { title: "WhaleAlert: Large SEI transaction detected", url: "#" },
+      { title: "GitHub Pulse: Sei Core Protocol Commits", url: "#" },
+    ];
+    
+    // 5. Store the data hash on a Sei native contract (simulated).
     // This creates a verifiable, onchain data layer.
 
     return { 
-      analysis,
+      summary,
+      onchainAnalysis,
+      offchainAnalysis,
+      references,
       onchainLog,
       offchainLog,
     };

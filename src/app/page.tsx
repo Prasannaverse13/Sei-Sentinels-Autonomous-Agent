@@ -3,7 +3,7 @@
 import Image from "next/image";
 import * as React from "react";
 import { AreaChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Area } from "recharts";
-import { Cpu, DatabaseZap, Bot, Palette, Loader, Server, Wallet, BrainCircuit, Banknote, Package, Send } from "lucide-react";
+import { Cpu, DatabaseZap, Bot, Palette, Loader, Server, Wallet, BrainCircuit, Banknote, Package, Send, ExternalLink } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,13 +12,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { createNftFromPrompt, CreateNftFromPromptOutput } from "@/ai/flows/create-nft-from-prompt";
-import { dataSentinelAgent } from "@/ai/flows/data-sentinel-agent";
+import { dataSentinelAgent, DataSentinelAgentOutput } from "@/ai/flows/data-sentinel-agent";
 import { orchestratorAgent } from "@/ai/flows/orchestrator-agent";
 import { defiPaymentsAgent, DefiPaymentsAgentInput } from "@/ai/flows/defi-payments-agent";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { AppLogo, SeiWhale } from "@/components/icons";
 import type { Activity } from "@/lib/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 
 const chartConfig = {
   value: {
@@ -42,7 +43,7 @@ const connectedPortfolioData = [
 export default function DashboardPage() {
   const { toast } = useToast();
   const [activities, setActivities] = React.useState<Activity[]>([]);
-  const [analysisSummary, setAnalysisSummary] = React.useState("Connect your wallet to get the latest intelligence brief from the Data Sentinel.");
+  const [analysisResult, setAnalysisResult] = React.useState<DataSentinelAgentOutput | null>(null);
   const [analysisLoading, setAnalysisLoading] = React.useState(false);
   const [investmentGoal, setInvestmentGoal] = React.useState("Maximize my DeFi portfolio yield with a focus on stablecoins and blue-chip assets.");
   const [strategies, setStrategies] = React.useState<string[]>([]);
@@ -110,7 +111,7 @@ export default function DashboardPage() {
 
   const handleRefreshAnalysis = React.useCallback(async () => {
     if (!walletAddress) {
-      setAnalysisSummary("Please connect your wallet to analyze market sentiment.");
+      setAnalysisResult(null);
       return;
     }
     setAnalysisLoading(true);
@@ -129,7 +130,7 @@ export default function DashboardPage() {
       addActivity("Data Sentinel: Synthesizing data...", <BrainCircuit className="text-blue-400" />);
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      setAnalysisSummary(result.analysis);
+      setAnalysisResult(result);
       addActivity("Data Sentinel: Analysis complete. Brief updated.", <BrainCircuit className="text-green-400" />);
     } catch (error) {
       console.error(error);
@@ -240,7 +241,7 @@ export default function DashboardPage() {
       if(action === 'propose_trade'){
         addActivity(`DeFi Agent: Using Hive Intelligence for analysis...`, <BrainCircuit className="text-blue-400" />);
         await new Promise(resolve => setTimeout(resolve, 1000));
-        result = await defiPaymentsAgent({ action, details, dataAnalysis: analysisSummary });
+        result = await defiPaymentsAgent({ action, details, dataAnalysis: analysisResult?.summary });
         addActivity(`DeFi Agent: Analysis complete.`, <BrainCircuit className="text-green-400" />, result.hiveLog);
       } else {
         addActivity(`DeFi Agent: Initiating A2A payment...`, <Banknote className="text-blue-400" />);
@@ -304,14 +305,40 @@ export default function DashboardPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {analysisLoading ? (
+                 {analysisLoading ? (
                   <div className="space-y-2">
                     <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-4 w-3/4" />
                   </div>
+                ) : analysisResult ? (
+                  <div className="space-y-4 text-sm">
+                    <p className="text-muted-foreground">{analysisResult.summary}</p>
+                    <Separator />
+                    <div className="space-y-2">
+                      <h4 className="font-semibold">On-Chain Analysis</h4>
+                      <p className="text-muted-foreground font-code">{analysisResult.onchainAnalysis}</p>
+                    </div>
+                     <div className="space-y-2">
+                      <h4 className="font-semibold">Off-Chain Analysis</h4>
+                      <p className="text-muted-foreground font-code">{analysisResult.offchainAnalysis}</p>
+                    </div>
+                    <div className="space-y-2">
+                       <h4 className="font-semibold">References</h4>
+                       <ul className="space-y-1 list-disc list-inside">
+                        {analysisResult.references.map((ref, i) => (
+                           <li key={i}>
+                             <a href={ref.url} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-accent hover:underline">
+                               {ref.title}
+                               <ExternalLink className="w-3 h-3" />
+                             </a>
+                           </li>
+                         ))}
+                       </ul>
+                    </div>
+                  </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">{analysisSummary}</p>
+                   <p className="text-sm text-muted-foreground">Connect your wallet to get the latest intelligence brief.</p>
                 )}
               </CardContent>
               <CardFooter>
