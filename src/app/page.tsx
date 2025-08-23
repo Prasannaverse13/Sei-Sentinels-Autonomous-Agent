@@ -51,7 +51,7 @@ export default function DashboardPage() {
       icon,
       details,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }, ...prev].slice(0, 10));
+    }, ...prev].slice(0, 20)); // Increased limit to show more activities
   };
   
   const handleConnectWallet = async () => {
@@ -156,9 +156,28 @@ export default function DashboardPage() {
       await new Promise(resolve => setTimeout(resolve, 1000));
       addActivity("Orchestrator: Beginning autonomous execution with ElizaOS wallet...", <Cpu className="text-purple-400" />);
       
+      // Full execution loop
       for (const task of result.plan) {
          await new Promise(resolve => setTimeout(resolve, 1500));
-         addActivity(`Orchestrator: Delegating task...`, <Send className="text-purple-400" />, task);
+         addActivity(`Orchestrator: Executing task...`, <Send className="text-purple-400" />, task);
+
+         if (task.includes("DataSentinel")) {
+           addActivity("Orchestrator: Delegating to Data Sentinel...", <Send className="text-purple-400" />);
+           await handleRefreshAnalysis();
+         } else if (task.includes("DeFiPaymentsAgent")) {
+           const actionMatch = task.match(/action: (\w+)/);
+           const detailsMatch = task.match(/details: "([^"]+)"/);
+           if(actionMatch && detailsMatch) {
+             const action = actionMatch[1] as DefiPaymentsAgentInput['action'];
+             const details = detailsMatch[1];
+             addActivity(`Orchestrator: Delegating to DeFi Agent...`, <Send className="text-purple-400" />);
+             await handleDeFiAction(action, details, true);
+           }
+         } else if (task.includes("ConsumerAgent")) {
+            addActivity(`Orchestrator: Delegating to Consumer Agent...`, <Send className="text-purple-400" />);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            addActivity("Consumer Agent: Notified user of plan completion.", <Bot className="text-green-400" />, "Status: Plan execution complete");
+         }
       }
        await new Promise(resolve => setTimeout(resolve, 1000));
        addActivity("Orchestrator: Plan execution complete. State updated on Sei via MCP.", <BrainCircuit className="text-green-400" />);
@@ -168,9 +187,9 @@ export default function DashboardPage() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to generate strategies.",
+        description: "Failed to generate or execute plan.",
       });
-      addActivity("Orchestrator: Failed to generate plan.", <Server className="text-red-400" />);
+      addActivity("Orchestrator: Failed to execute plan.", <Server className="text-red-400" />);
     } finally {
       setStrategyLoading(false);
     }
@@ -218,11 +237,13 @@ export default function DashboardPage() {
     }
   };
 
-  const handleDeFiAction = async (action: DefiPaymentsAgentInput['action'], details: string) => {
+  const handleDeFiAction = async (action: DefiPaymentsAgentInput['action'], details: string, isFromPlan = false) => {
     setPaymentLoading(true);
     setPaymentStatus(null);
-    addActivity(`Orchestrator: Manual trigger for DeFi Agent.`, <Cpu className="text-purple-400" />, `Action: ${action}`);
-    addActivity(`Orchestrator: Delegating to DeFi Agent...`, <Send className="text-purple-400" />);
+    if (!isFromPlan) {
+      addActivity(`Orchestrator: Manual trigger for DeFi Agent.`, <Cpu className="text-purple-400" />, `Action: ${action}`);
+      addActivity(`Orchestrator: Delegating to DeFi Agent...`, <Send className="text-purple-400" />);
+    }
     
     try {
       let result;
@@ -349,12 +370,15 @@ export default function DashboardPage() {
                       <Skeleton className="w-full h-10" />
                    </div>
                   ) : strategies.length > 0 && (
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {strategies.map((strategy, index) => (
-                        <div key={index} className="p-3 text-sm rounded-md bg-muted/50 font-code">
-                          {strategy}
-                        </div>
-                      ))}
+                    <div>
+                      <h4 className="mb-2 text-sm font-semibold">Generated Plan:</h4>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        {strategies.map((strategy, index) => (
+                          <div key={index} className="p-3 text-sm rounded-md bg-muted/50 font-code">
+                            {strategy}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
               </CardContent>
@@ -454,11 +478,11 @@ export default function DashboardPage() {
                     <p className="text-sm text-muted-foreground">Connect wallet to see agent activity.</p>
                   </div>
                 ) : (
-                   <ScrollArea className="h-[600px]">
+                   <ScrollArea className="h-[600px] pr-4">
                       <ul className="space-y-4">
                         {activities.map((activity, index) => (
                           <li key={index} className="flex items-start gap-3">
-                            <span className="p-2 rounded-full bg-muted">{activity.icon}</span>
+                            <span className="flex items-center justify-center p-2 rounded-full bg-muted">{activity.icon}</span>
                             <div className="flex-1">
                               <p className="text-sm">{activity.description}</p>
                                {activity.details && <p className="text-xs text-muted-foreground font-code">{activity.details}</p>}
@@ -538,3 +562,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
