@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { createNftFromPrompt } from "@/ai/flows/create-nft-from-prompt";
 import { summarizeMarketSentiment } from "@/ai/flows/summarize-market-sentiment";
 import { generateAgentStrategies } from "@/ai/flows/generate-agent-strategies";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 import { AppLogo } from "@/components/icons";
 import type { Activity } from "@/lib/types";
 
@@ -301,21 +301,33 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="w-full h-[200px]">
-                   <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={portfolioData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="hsl(var(--accent))" stopOpacity={0.8}/>
-                            <stop offset="95%" stopColor="hsl(var(--accent))" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border) / 0.5)" />
-                        <XAxis dataKey="month" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} tickLine={false} axisLine={false} />
-                        <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value/1000}k`}/>
-                        <RechartsTooltip content={<ChartTooltipContent indicator="dot" />} cursor={{ fill: 'hsl(var(--accent) / 0.1)' }} />
-                        <Area type="monotone" dataKey="value" stroke="hsl(var(--accent))" fill="url(#colorValue)" />
-                      </AreaChart>
-                   </ResponsiveContainer>
+                  <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
+                    <AreaChart
+                      accessibilityLayer
+                      data={portfolioData}
+                      margin={{
+                        left: 12,
+                        right: 12,
+                      }}
+                    >
+                      <CartesianGrid vertical={false} />
+                      <XAxis
+                        dataKey="month"
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                        tickFormatter={(value) => value.slice(0, 3)}
+                      />
+                      <RechartsTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
+                      <Area
+                        dataKey="value"
+                        type="natural"
+                        fill="var(--color-value)"
+                        fillOpacity={0.4}
+                        stroke="var(--color-value)"
+                      />
+                    </AreaChart>
+                  </ChartContainer>
                 </div>
               </CardContent>
             </Card>
