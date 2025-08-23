@@ -4,6 +4,7 @@ import * as React from 'react';
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { sei } from 'wagmi/chains';
 import { injected } from 'wagmi/connectors';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // 1. Get projectID at https://cloud.walletconnect.com
 const projectId = process.env.NEXT_PUBLIC_PROJECT_ID
@@ -39,10 +40,14 @@ export const config = createConfig({
   },
 })
 
+const queryClient = new QueryClient()
+
 export function Web3Provider({ children }: { children: React.ReactNode }) {
   return (
     <WagmiProvider config={config}>
-      {children}
+      <QueryClientProvider client={queryClient}>
+        {children}
+      </QueryClientProvider>
     </WagmiProvider>
   );
 }
