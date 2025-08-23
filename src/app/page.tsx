@@ -3,7 +3,7 @@
 import Image from "next/image";
 import * as React from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts";
-import { Cpu, DatabaseZap, Bot, Palette, Loader, Server, Wallet, BrainCircuit } from "lucide-react";
+import { Cpu, DatabaseZap, Bot, Palette, Loader, Server, Wallet, BrainCircuit, Banknote, Package, Send } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,8 +14,8 @@ import { useToast } from "@/hooks/use-toast";
 import { createNftFromPrompt } from "@/ai/flows/create-nft-from-prompt";
 import { summarizeMarketSentiment } from "@/ai/flows/summarize-market-sentiment";
 import { generateAgentStrategies } from "@/ai/flows/generate-agent-strategies";
-import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
-import { AppLogo } from "@/components/icons";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { AppLogo, SeiWhale } from "@/components/icons";
 import type { Activity } from "@/lib/types";
 
 
@@ -247,10 +247,10 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Bot className="w-6 h-6 text-primary" />
-                  Strategy Builder
+                  Orchestrator Agent
                 </CardTitle>
                 <CardDescription>
-                  Define a high-level goal and let the Orchestrator generate agent strategies.
+                  Define a high-level goal and let the Orchestrator generate and execute agent strategies.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -279,9 +279,25 @@ export default function DashboardPage() {
               <CardFooter>
                 <Button onClick={handleGenerateStrategies} disabled={strategyLoading || !walletAddress}>
                   {strategyLoading && <Loader className="w-4 h-4 mr-2 animate-spin" />}
-                  Generate Strategies
+                  Generate & Execute Plan
                 </Button>
               </CardFooter>
+            </Card>
+
+             <Card className="bg-card/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                   <SeiWhale className="w-6 h-6 text-primary" />
+                  DeFi & Payments Agent
+                </CardTitle>
+                <CardDescription>
+                  Manage portfolio and facilitate payments using the Crossmint GOAT SDK.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-4 sm:grid-cols-2">
+                 <Button disabled={!walletAddress}><Banknote />Propose Transaction</Button>
+                 <Button disabled={!walletAddress}><Send />Execute A2A Payment</Button>
+              </CardContent>
             </Card>
             
             <Card className="bg-card/50">
@@ -330,10 +346,10 @@ export default function DashboardPage() {
              <Card className="bg-card/50">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Cpu className="w-6 h-6 text-primary" />
-                  Agent Activity
+                  <Package className="w-6 h-6 text-primary" />
+                  MCP Server & Agent Activity
                 </CardTitle>
-                <CardDescription>Live feed of Sentinel actions.</CardDescription>
+                <CardDescription>Live feed of Orchestrator and Agent actions.</CardDescription>
               </CardHeader>
               <CardContent>
                 {activities.length === 0 && !sentimentLoading ? (
@@ -360,7 +376,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="w-full h-[200px]">
-                  <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
+                  <ChartContainer config={chartConfig} className="w-full min-h-[200px]">
                     <AreaChart
                       accessibilityLayer
                       data={portfolioData}
@@ -377,7 +393,7 @@ export default function DashboardPage() {
                         tickMargin={8}
                         tickFormatter={(value) => value.slice(0, 3)}
                       />
-                      <RechartsTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
+                      <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
                       <Area
                         dataKey="value"
                         type="natural"
