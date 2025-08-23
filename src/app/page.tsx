@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { createNftFromPrompt } from "@/ai/flows/create-nft-from-prompt";
 import { summarizeMarketSentiment } from "@/ai/flows/summarize-market-sentiment";
 import { generateAgentStrategies } from "@/ai/flows/generate-agent-strategies";
+import { defiPaymentsAgent, DefiPaymentsAgentInput } from "@/ai/flows/defi-payments-agent";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { AppLogo, SeiWhale } from "@/components/icons";
 import type { Activity } from "@/lib/types";
@@ -24,6 +25,27 @@ const chartConfig = {
     color: "hsl(var(--accent))",
   },
 };
+
+const initialPortfolioData = [
+  { month: "January", value: 186 },
+  { month: "February", value: 305 },
+  { month: "March", value: 237 },
+  { month: "April", value: 203 },
+  { month: "May", value: 250 },
+  { month: "June", value: 320 },
+];
+
+const connectedPortfolioData = [
+  { month: "January", value: 186 },
+  { month: "February", value: 305 },
+  { month: "March", value: 237 },
+  { month: "April", value: 273 },
+  { month: "May", value: 209 },
+  { month: "June", value: 412 },
+  { month: "July", value: 450 },
+  { month: "August", value: 489 },
+  { month: "September", value: 512 },
+];
 
 export default function DashboardPage() {
   const { toast } = useToast();
@@ -37,13 +59,16 @@ export default function DashboardPage() {
   const [nftResult, setNftResult] = React.useState<{ nftDataUri: string; listingStatus: string } | null>(null);
   const [nftLoading, setNftLoading] = React.useState(false);
   const [walletAddress, setWalletAddress] = React.useState<string | null>(null);
-  const [portfolioData, setPortfolioData] = React.useState([]);
+  const [portfolioData, setPortfolioData] = React.useState(initialPortfolioData);
   const [isConnecting, setIsConnecting] = React.useState(false);
+  const [paymentLoading, setPaymentLoading] = React.useState(false);
+  const [paymentStatus, setPaymentStatus] = React.useState<string | null>(null);
 
-  const addActivity = (description: string, icon: React.ReactNode) => {
+  const addActivity = (description: string, icon: React.ReactNode, details?: string) => {
     setActivities(prev => [{
       description,
       icon,
+      details,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }, ...prev].slice(0, 5));
   };
@@ -64,8 +89,7 @@ export default function DashboardPage() {
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       const address = accounts[0];
       setWalletAddress(address);
-      // TODO: Fetch real portfolio data here
-      setPortfolioData([]); 
+      setPortfolioData(connectedPortfolioData); 
       toast({
         title: "Wallet Connected",
         description: `Connected to address: ${address.substring(0, 6)}...${address.substring(address.length - 4)}`,
@@ -157,7 +181,7 @@ export default function DashboardPage() {
     try {
       const result = await createNftFromPrompt({ prompt: nftPrompt });
       setNftResult(result);
-      addActivity("NFT created and listed.", <Palette className="text-green-400" />);
+      addActivity("NFT created and listed.", <Palette className="text-green-400" />, result.listingStatus);
     } catch (error) {
       console.error(error);
       toast({
@@ -168,6 +192,27 @@ export default function DashboardPage() {
        addActivity("Failed to create NFT.", <Server className="text-red-400" />);
     } finally {
       setNftLoading(false);
+    }
+  };
+
+  const handleDeFiAction = async (action: DefiPaymentsAgentInput['action'], details: string) => {
+    setPaymentLoading(true);
+    setPaymentStatus(null);
+    addActivity(`DeFi Agent action: ${action}...`, <Banknote className="text-blue-400" />);
+    try {
+      const result = await defiPaymentsAgent({ action, details });
+      setPaymentStatus(result.crossmintLog);
+      addActivity(`DeFi Agent action successful.`, <Banknote className="text-green-400" />, `Tx: ${result.transactionId.substring(0,12)}...`);
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "DeFi Action Failed",
+        description: "Could not complete the transaction.",
+      });
+      addActivity("DeFi Agent action failed.", <Server className="text-red-400" />);
+    } finally {
+      setPaymentLoading(false);
     }
   };
 
@@ -276,9 +321,22 @@ export default function DashboardPage() {
                   Manage portfolio and facilitate payments using the Crossmint GOAT SDK.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-4 sm:grid-cols-2">
-                 <Button disabled={!walletAddress}><Banknote />Propose Transaction</Button>
-                 <Button disabled={!walletAddress}><Send />Execute A2A Payment</Button>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Button onClick={() => handleDeFiAction('propose_trade', 'Buy 100 SEI')} disabled={!walletAddress || paymentLoading}>
+                    {paymentLoading && <Loader className="w-4 h-4 mr-2 animate-spin" />}
+                    <Banknote />Propose Transaction
+                  </Button>
+                  <Button onClick={() => handleDeFiAction('execute_payment', 'Pay 5 SEI to agent 0x... for data services')} disabled={!walletAddress || paymentLoading}>
+                    {paymentLoading && <Loader className="w-4 h-4 mr-2 animate-spin" />}
+                    <Send />Execute A2A Payment
+                  </Button>
+                </div>
+                 {paymentStatus && (
+                    <div className="p-3 text-sm rounded-md bg-muted/50 font-code text-green-400">
+                        {paymentStatus}
+                    </div>
+                 )}
               </CardContent>
             </Card>
             
@@ -343,6 +401,7 @@ export default function DashboardPage() {
                         <span className="p-2 rounded-full bg-muted">{activity.icon}</span>
                         <div className="flex-1">
                           <p className="text-sm">{activity.description}</p>
+                           {activity.details && <p className="text-xs text-muted-foreground font-code">{activity.details}</p>}
                           <p className="text-xs text-muted-foreground">{activity.time}</p>
                         </div>
                       </li>
@@ -355,6 +414,9 @@ export default function DashboardPage() {
             <Card className="bg-card/50">
               <CardHeader>
                 <CardTitle>Portfolio Overview</CardTitle>
+                 <CardDescription>
+                  {walletAddress ? `Portfolio data for ${walletAddress.substring(0, 6)}...` : 'Connect wallet to see portfolio'}
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="w-full h-[200px]">
@@ -375,6 +437,12 @@ export default function DashboardPage() {
                         tickMargin={8}
                         tickFormatter={(value) => value.slice(0, 3)}
                       />
+                       <YAxis
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                        tickCount={3}
+                      />
                       <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
                       <Area
                         dataKey="value"
@@ -393,3 +461,4 @@ export default function DashboardPage() {
       </main>
     </div>
   );
+}
