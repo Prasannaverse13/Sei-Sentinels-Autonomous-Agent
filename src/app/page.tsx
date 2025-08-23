@@ -18,6 +18,7 @@ import { defiPaymentsAgent, DefiPaymentsAgentInput } from "@/ai/flows/defi-payme
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { AppLogo, SeiWhale } from "@/components/icons";
 import type { Activity } from "@/lib/types";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const chartConfig = {
   value: {
