@@ -26,17 +26,6 @@ export async function createNftFromPrompt(input: CreateNftFromPromptInput): Prom
   return createNftFromPromptFlow(input);
 }
 
-const createNftPrompt = ai.definePrompt({
-  name: 'createNftPrompt',
-  input: {schema: CreateNftFromPromptInputSchema},
-  output: {schema: z.string().describe('A refined prompt for image generation.')},
-  prompt: `You are an AI that generates prompts for image generation, based on the user's request.
-
-  The user's request is: {{{prompt}}}
-
-  Respond only with a prompt that would be suitable for generating a high-quality image.  Do not add any additional text.`, 
-});
-
 const createNftFromPromptFlow = ai.defineFlow(
   {
     name: 'createNftFromPromptFlow',
@@ -45,14 +34,10 @@ const createNftFromPromptFlow = ai.defineFlow(
   },
   async input => {
     // 1. Generate the NFT image data URI from the prompt.
-    const {output} = await createNftPrompt(input);
-    const refinedPrompt = output ?? input.prompt;
-
-
     const {media} = await ai.generate({
       // IMPORTANT: ONLY the googleai/gemini-2.0-flash-preview-image-generation model is able to generate images. You MUST use exactly this model to generate images.
       model: 'googleai/gemini-2.0-flash-preview-image-generation',
-      prompt: refinedPrompt,
+      prompt: input.prompt,
       config: {
         responseModalities: ['TEXT', 'IMAGE'], // MUST provide both TEXT and IMAGE, IMAGE only won't work
       },
