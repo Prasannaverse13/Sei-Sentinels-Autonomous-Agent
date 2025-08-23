@@ -19,7 +19,16 @@ import { AppLogo } from "@/components/icons";
 import type { Activity } from "@/lib/types";
 
 
-const portfolioData = [
+const initialPortfolioData = [
+  { month: "Jan", value: 0 },
+  { month: "Feb", value: 0 },
+  { month: "Mar", value: 0 },
+  { month: "Apr", value: 0 },
+  { month: "May", value: 0 },
+  { month: "Jun", value: 0 },
+];
+
+const connectedPortfolioData = [
   { month: "Jan", value: 4000 },
   { month: "Feb", value: 3000 },
   { month: "Mar", value: 5000 },
@@ -39,13 +48,16 @@ export default function DashboardPage() {
   const { toast } = useToast();
   const [activities, setActivities] = React.useState<Activity[]>([]);
   const [sentimentSummary, setSentimentSummary] = React.useState("");
-  const [sentimentLoading, setSentimentLoading] = React.useState(true);
+  const [sentimentLoading, setSentimentLoading] = React.useState(false);
   const [investmentGoal, setInvestmentGoal] = React.useState("Maximize my DeFi portfolio yield with a focus on stablecoins and blue-chip assets.");
   const [strategies, setStrategies] = React.useState<string[]>([]);
   const [strategyLoading, setStrategyLoading] = React.useState(false);
   const [nftPrompt, setNftPrompt] = React.useState("A futuristic Sei Sentinel robot surfing on a wave of data");
   const [nftResult, setNftResult] = React.useState<{ nftDataUri: string; listingStatus: string } | null>(null);
   const [nftLoading, setNftLoading] = React.useState(false);
+  const [walletAddress, setWalletAddress] = React.useState<string | null>(null);
+  const [portfolioData, setPortfolioData] = React.useState(initialPortfolioData);
+  const [isConnecting, setIsConnecting] = React.useState(false);
 
   const addActivity = (description: string, icon: React.ReactNode) => {
     setActivities(prev => [{
@@ -55,28 +67,69 @@ export default function DashboardPage() {
     }, ...prev].slice(0, 5));
   };
   
-  const handleSummarizeSentiment = React.useCallback(async () => {
-    setSentimentLoading(true);
-    addActivity("Data Sentinel fetching market data...", <DatabaseZap className="text-blue-400" />);
-    try {
-      const result = await summarizeMarketSentiment({
-        portfolioOverview: "Current portfolio consists of SEI, BTC, ETH, and various stablecoins. Moderate risk tolerance.",
-        agentActivities: "Recent activities include rebalancing portfolio to increase SEI exposure and monitoring memecoin volatility."
-      });
-      setSentimentSummary(result.marketSentimentSummary);
-      addActivity("Market sentiment analysis complete.", <BrainCircuit className="text-green-400" />);
-    } catch (error) {
-      console.error(error);
+  const handleConnectWallet = async () => {
+    if (typeof window.ethereum === 'undefined') {
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Failed to summarize market sentiment.",
+        title: "MetaMask not installed",
+        description: "Please install MetaMask to connect your wallet.",
       });
-      addActivity("Failed to fetch market sentiment.", <Server className="text-red-400" />);
-    } finally {
-      setSentimentLoading(false);
+      return;
     }
-  }, [toast]);
+
+    setIsConnecting(true);
+    addActivity("Connecting to wallet...", <Wallet className="text-blue-400" />);
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      const address = accounts[0];
+      setWalletAddress(address);
+      setPortfolioData(connectedPortfolioData);
+      toast({
+        title: "Wallet Connected",
+        description: `Connected to address: ${address.substring(0, 6)}...${address.substring(address.length - 4)}`,
+      });
+      addActivity("Wallet connected successfully.", <Wallet className="text-green-400" />);
+      handleSummarizeSentiment(true);
+    } catch (error) {
+      console.error("Failed to connect wallet:", error);
+      toast({
+        variant: "destructive",
+        title: "Connection Failed",
+        description: "User rejected the connection request.",
+      });
+      addActivity("Wallet connection failed.", <Server className="text-red-400" />);
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  const handleSummarizeSentiment = React.useCallback(async (walletConnected = false) => {
+    setSentimentLoading(true);
+    if (walletConnected || walletAddress) {
+      addActivity("Data Sentinel fetching market data...", <DatabaseZap className="text-blue-400" />);
+      try {
+        const result = await summarizeMarketSentiment({
+          portfolioOverview: "Current portfolio consists of SEI, BTC, ETH, and various stablecoins. Moderate risk tolerance.",
+          agentActivities: "Recent activities include rebalancing portfolio to increase SEI exposure and monitoring memecoin volatility."
+        });
+        setSentimentSummary(result.marketSentimentSummary);
+        addActivity("Market sentiment analysis complete.", <BrainCircuit className="text-green-400" />);
+      } catch (error) {
+        console.error(error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to summarize market sentiment.",
+        });
+        addActivity("Failed to fetch market sentiment.", <Server className="text-red-400" />);
+      } finally {
+        setSentimentLoading(false);
+      }
+    } else {
+        setSentimentSummary("Please connect your wallet to analyze market sentiment.");
+        setSentimentLoading(false);
+    }
+  }, [toast, walletAddress]);
 
   const handleGenerateStrategies = async () => {
     if (!investmentGoal) {
@@ -149,9 +202,13 @@ export default function DashboardPage() {
             Sei Sentinels
           </h1>
         </div>
-        <Button variant="outline" className="flex items-center gap-2">
-          <Wallet className="w-4 h-4" />
-          <span>Connect Wallet</span>
+        <Button variant="outline" className="flex items-center gap-2" onClick={handleConnectWallet} disabled={isConnecting || !!walletAddress}>
+          {isConnecting ? (
+             <Loader className="w-4 h-4 animate-spin" />
+          ) : (
+            <Wallet className="w-4 h-4" />
+          )}
+          <span>{walletAddress ? `${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}` : "Connect Wallet"}</span>
         </Button>
       </header>
       <main className="flex-1 p-4 md:p-6 lg:p-8">
@@ -179,7 +236,7 @@ export default function DashboardPage() {
                 )}
               </CardContent>
               <CardFooter>
-                 <Button variant="ghost" size="sm" onClick={handleSummarizeSentiment} disabled={sentimentLoading}>
+                 <Button variant="ghost" size="sm" onClick={() => handleSummarizeSentiment()} disabled={sentimentLoading || !walletAddress}>
                   {sentimentLoading ? <Loader className="w-4 h-4 mr-2 animate-spin" /> : null}
                   Refresh Analysis
                 </Button>
@@ -202,6 +259,7 @@ export default function DashboardPage() {
                   value={investmentGoal}
                   onChange={(e) => setInvestmentGoal(e.target.value)}
                   className="font-code"
+                  disabled={!walletAddress}
                 />
                  {strategyLoading ? (
                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -219,7 +277,7 @@ export default function DashboardPage() {
                   )}
               </CardContent>
               <CardFooter>
-                <Button onClick={handleGenerateStrategies} disabled={strategyLoading}>
+                <Button onClick={handleGenerateStrategies} disabled={strategyLoading || !walletAddress}>
                   {strategyLoading && <Loader className="w-4 h-4 mr-2 animate-spin" />}
                   Generate Strategies
                 </Button>
@@ -243,8 +301,9 @@ export default function DashboardPage() {
                       value={nftPrompt}
                       onChange={(e) => setNftPrompt(e.target.value)}
                       className="font-code"
+                      disabled={!walletAddress}
                     />
-                     <Button onClick={handleCreateNft} disabled={nftLoading} className="min-w-fit">
+                     <Button onClick={handleCreateNft} disabled={nftLoading || !walletAddress} className="min-w-fit">
                       {nftLoading ? <Loader className="w-4 h-4 animate-spin" /> : "Create NFT"}
                     </Button>
                  </div>
