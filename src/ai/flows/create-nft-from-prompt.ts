@@ -32,14 +32,13 @@ const createNftFromPromptFlow = ai.defineFlow(
     inputSchema: CreateNftFromPromptInputSchema,
     outputSchema: CreateNftFromPromptOutputSchema,
   },
-  async input => {
-    // 1. Generate the NFT image data URI from the prompt.
+  async (input) => {
+    // 1. Generate the NFT image data URI from the prompt using a generative AI model.
     const {media} = await ai.generate({
-      // IMPORTANT: ONLY the googleai/gemini-2.0-flash-preview-image-generation model is able to generate images. You MUST use exactly this model to generate images.
       model: 'googleai/gemini-2.0-flash-preview-image-generation',
       prompt: input.prompt,
       config: {
-        responseModalities: ['TEXT', 'IMAGE'], // MUST provide both TEXT and IMAGE, IMAGE only won't work
+        responseModalities: ['TEXT', 'IMAGE'],
       },
     });
 
@@ -48,10 +47,14 @@ const createNftFromPromptFlow = ai.defineFlow(
     }
     const nftDataUri = media.url;
 
-    // 2. Mock listing the NFT for sale on a Sei-based marketplace.
-    // In a real implementation, this would involve interacting with the Sei blockchain.
-    const listingStatus = 'NFT listed for sale on the Sei marketplace.';
+    // 2. Mint the NFT on the Sei network and list it for sale on a marketplace.
+    // In a real implementation, this would involve using the Crossmint GOAT SDK
+    // to mint and another Sei SDK to list on a marketplace.
+    const listingStatus = 'NFT minted and listed for sale on a Sei marketplace (simulated).';
 
+    // 3. Notify the user via the Consumer Agent (AIDN).
+    // (simulated)
+    
     return {nftDataUri, listingStatus};
   }
 );

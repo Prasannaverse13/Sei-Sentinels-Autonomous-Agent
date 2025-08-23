@@ -16,7 +16,7 @@ const OrchestratorAgentInputSchema = z.object({
 export type OrchestratorAgentInput = z.infer<typeof OrchestratorAgentInputSchema>;
 
 const OrchestratorAgentOutputSchema = z.object({
-  taskSequence: z.array(z.string()).describe('A sequence of tasks to be executed by other agents.'),
+  plan: z.array(z.string()).describe('A sequence of tasks to be executed by other agents.'),
   executionLog: z.string().describe('A log of the orchestration process and on-chain interactions.'),
 });
 export type OrchestratorAgentOutput = z.infer<typeof OrchestratorAgentOutputSchema>;
@@ -32,29 +32,26 @@ const orchestratorAgentFlow = ai.defineFlow(
     outputSchema: OrchestratorAgentOutputSchema,
   },
   async (input) => {
-    // This is a placeholder for the full implementation.
-    // In a real scenario, this flow would:
-    // 1. Use the Cambrian Agent Kit to parse the goal.
-    // 2. Break the goal into sub-tasks for other agents.
-    // 3. Use a custom MCP server to register agent capabilities and delegate tasks.
-    // 4. Use ElizaOS for agentic wallet operations, allowing autonomous on-chain actions.
-    // 5. Log all major actions and decisions to the Sei blockchain for transparency.
+    // This flow simulates the Orchestrator's logic.
+    // 1. Use Cambrian Agent Kit to parse the goal and create a plan.
+    // 2. Delegate tasks to other agents via a custom MCP server.
+    // 3. Use ElizaOS for agentic wallet operations (simulated).
+    // 4. Log all major actions and decisions to the Sei blockchain (simulated).
 
-    const taskSequence = [
-      `DataSentinel.fetch_market_data({ topic: "${input.goal}" })`,
-      `DeFiPaymentsAgent.analyze_and_propose_transaction({ market_data: ... })`,
-      `ConsumerAgent.notify_user({ message: "A new transaction has been proposed." })`,
+    // Simulate plan generation based on the goal.
+    const plan = [
+      `Task 1: Delegate to DataSentinel(query: "${input.goal}")`,
+      `Task 2: Delegate to DeFiPaymentsAgent(analyze_data, propose_trade)`,
+      `Task 3: Delegate to ConsumerAgent(notify_user, status)`,
     ];
 
     const executionLog = `
       Orchestrator: Goal received - "${input.goal}".
       Orchestrator: Decomposing goal into tasks using Cambrian Agent logic.
-      Orchestrator: Delegating task 1 to DataSentinel via custom MCP server.
-      Orchestrator: Task 1 complete. Result logged on-chain.
-      Orchestrator: Delegating task 2 to DeFiPaymentsAgent.
-      Orchestrator: Awaiting user approval for transaction via ElizaOS policy.
+      Orchestrator: Plan generated. Updating state on Sei blockchain via MCP Server.
+      Orchestrator: Beginning execution...
     `.trim().replace(/^ +/gm, '');
 
-    return { taskSequence, executionLog };
+    return { plan, executionLog };
   }
 );

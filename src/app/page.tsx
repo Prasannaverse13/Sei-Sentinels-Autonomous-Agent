@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import * as React from "react";
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts";
+import { AreaChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { Cpu, DatabaseZap, Bot, Palette, Loader, Server, Wallet, BrainCircuit, Banknote, Package, Send } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { createNftFromPrompt } from "@/ai/flows/create-nft-from-prompt";
-import { summarizeMarketSentiment } from "@/ai/flows/summarize-market-sentiment";
-import { generateAgentStrategies } from "@/ai/flows/generate-agent-strategies";
+import { dataSentinelAgent } from "@/ai/flows/data-sentinel-agent";
+import { orchestratorAgent } from "@/ai/flows/orchestrator-agent";
 import { defiPaymentsAgent, DefiPaymentsAgentInput } from "@/ai/flows/defi-payments-agent";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { AppLogo, SeiWhale } from "@/components/icons";
@@ -26,32 +26,23 @@ const chartConfig = {
   },
 };
 
-const initialPortfolioData = [
-  { month: "January", value: 186 },
-  { month: "February", value: 305 },
-  { month: "March", value: 237 },
-  { month: "April", value: 203 },
-  { month: "May", value: 250 },
-  { month: "June", value: 320 },
-];
-
 const connectedPortfolioData = [
-  { month: "January", value: 186 },
-  { month: "February", value: 305 },
-  { month: "March", value: 237 },
-  { month: "April", value: 273 },
-  { month: "May", value: 209 },
-  { month: "June", value: 412 },
-  { month: "July", value: 450 },
-  { month: "August", value: 489 },
-  { month: "September", value: 512 },
+  { month: "Jan", value: 1860 },
+  { month: "Feb", value: 3050 },
+  { month: "Mar", value: 2370 },
+  { month: "Apr", value: 2730 },
+  { month: "May", value: 2090 },
+  { month: "Jun", value: 4120 },
+  { month: "Jul", value: 4500 },
+  { month: "Aug", value: 4890 },
+  { month: "Sep", value: 5120 },
 ];
 
 export default function DashboardPage() {
   const { toast } = useToast();
   const [activities, setActivities] = React.useState<Activity[]>([]);
-  const [sentimentSummary, setSentimentSummary] = React.useState("");
-  const [sentimentLoading, setSentimentLoading] = React.useState(false);
+  const [analysisSummary, setAnalysisSummary] = React.useState("");
+  const [analysisLoading, setAnalysisLoading] = React.useState(false);
   const [investmentGoal, setInvestmentGoal] = React.useState("Maximize my DeFi portfolio yield with a focus on stablecoins and blue-chip assets.");
   const [strategies, setStrategies] = React.useState<string[]>([]);
   const [strategyLoading, setStrategyLoading] = React.useState(false);
@@ -59,7 +50,7 @@ export default function DashboardPage() {
   const [nftResult, setNftResult] = React.useState<{ nftDataUri: string; listingStatus: string } | null>(null);
   const [nftLoading, setNftLoading] = React.useState(false);
   const [walletAddress, setWalletAddress] = React.useState<string | null>(null);
-  const [portfolioData, setPortfolioData] = React.useState(initialPortfolioData);
+  const [portfolioData, setPortfolioData] = React.useState<any[]>([]);
   const [isConnecting, setIsConnecting] = React.useState(false);
   const [paymentLoading, setPaymentLoading] = React.useState(false);
   const [paymentStatus, setPaymentStatus] = React.useState<string | null>(null);
@@ -89,13 +80,21 @@ export default function DashboardPage() {
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       const address = accounts[0];
       setWalletAddress(address);
-      setPortfolioData(connectedPortfolioData); 
+      addActivity("Wallet connected successfully.", <Wallet className="text-green-400" />);
+      
+      // Simulate fetching real portfolio data
+      addActivity("Fetching portfolio data...", <DatabaseZap className="text-blue-400" />);
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
+      setPortfolioData(connectedPortfolioData);
+      addActivity("Portfolio data loaded.", <DatabaseZap className="text-green-400" />);
+      
       toast({
         title: "Wallet Connected",
         description: `Connected to address: ${address.substring(0, 6)}...${address.substring(address.length - 4)}`,
       });
-      addActivity("Wallet connected successfully.", <Wallet className="text-green-400" />);
-      handleSummarizeSentiment(true);
+      
+      handleRefreshAnalysis();
+
     } catch (error) {
       console.error("Failed to connect wallet:", error);
       toast({
@@ -109,33 +108,37 @@ export default function DashboardPage() {
     }
   };
 
-  const handleSummarizeSentiment = React.useCallback(async (walletConnected = false) => {
-    setSentimentLoading(true);
-    if (walletConnected || walletAddress) {
-      addActivity("Data Sentinel fetching market data...", <DatabaseZap className="text-blue-400" />);
-      try {
-        const result = await summarizeMarketSentiment({
-          portfolioOverview: "Current portfolio consists of SEI, BTC, ETH, and various stablecoins. Moderate risk tolerance.",
-          agentActivities: "Recent activities include rebalancing portfolio to increase SEI exposure and monitoring memecoin volatility."
-        });
-        setSentimentSummary(result.marketSentimentSummary);
-        addActivity("Market sentiment analysis complete.", <BrainCircuit className="text-green-400" />);
-      } catch (error) {
-        console.error(error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to summarize market sentiment.",
-        });
-        addActivity("Failed to fetch market sentiment.", <Server className="text-red-400" />);
-      } finally {
-        setSentimentLoading(false);
-      }
-    } else {
-        setSentimentSummary("Please connect your wallet to analyze market sentiment.");
-        setSentimentLoading(false);
+  const handleRefreshAnalysis = React.useCallback(async () => {
+    if (!walletAddress) {
+      setAnalysisSummary("Please connect your wallet to analyze market sentiment.");
+      return;
     }
-  }, [toast, walletAddress]);
+    setAnalysisLoading(true);
+    addActivity("Orchestrator: Goal received - 'Get market data'.", <Cpu className="text-purple-400" />);
+    addActivity("Orchestrator: Delegating to Data Sentinel...", <Send className="text-purple-400" />);
+    
+    try {
+      addActivity("Data Sentinel: Fetching off-chain data...", <DatabaseZap className="text-blue-400" />);
+      const result = await dataSentinelAgent({ query: "Analyze market sentiment for SEI" });
+      
+      addActivity("Data Sentinel: Fetching on-chain data...", <DatabaseZap className="text-blue-400" />, result.onchainLog);
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate analysis delay
+      
+      setAnalysisSummary(result.analysis);
+      addActivity("Data Sentinel: Analysis complete.", <BrainCircuit className="text-green-400" />);
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch market analysis.",
+      });
+      addActivity("Data Sentinel: Failed to fetch analysis.", <Server className="text-red-400" />);
+    } finally {
+      setAnalysisLoading(false);
+    }
+  }, [walletAddress, toast]);
+
 
   const handleGenerateStrategies = async () => {
     if (!investmentGoal) {
@@ -148,11 +151,25 @@ export default function DashboardPage() {
     }
     setStrategyLoading(true);
     setStrategies([]);
-    addActivity("Orchestrator creating new strategies...", <Cpu className="text-purple-400" />);
+    
+    addActivity("Orchestrator: Goal received - 'Generate investment plan'.", <Cpu className="text-purple-400" />);
+    
     try {
-      const result = await generateAgentStrategies({ investmentGoal });
-      setStrategies(result.strategies);
-      addActivity("New agent strategies generated.", <BrainCircuit className="text-green-400" />);
+      const result = await orchestratorAgent({ investmentGoal });
+      addActivity("Orchestrator: Plan generated.", <BrainCircuit className="text-green-400" />, result.executionLog);
+      setStrategies(result.plan);
+      
+      // Simulate executing the plan
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      addActivity("Orchestrator: Executing plan...", <Cpu className="text-purple-400" />);
+      
+      for (const task of result.plan) {
+         await new Promise(resolve => setTimeout(resolve, 1500));
+         addActivity(`Orchestrator: ${task}`, <Send className="text-purple-400" />);
+      }
+       await new Promise(resolve => setTimeout(resolve, 1000));
+       addActivity("Orchestrator: Plan execution complete.", <BrainCircuit className="text-green-400" />);
+
     } catch (error) {
       console.error(error);
       toast({
@@ -160,7 +177,7 @@ export default function DashboardPage() {
         title: "Error",
         description: "Failed to generate strategies.",
       });
-      addActivity("Failed to generate strategies.", <Server className="text-red-400" />);
+      addActivity("Orchestrator: Failed to generate plan.", <Server className="text-red-400" />);
     } finally {
       setStrategyLoading(false);
     }
@@ -177,11 +194,21 @@ export default function DashboardPage() {
     }
     setNftLoading(true);
     setNftResult(null);
-    addActivity("Creative Agent generating NFT...", <Palette className="text-yellow-400" />);
+    addActivity("Orchestrator: Goal received - 'Create NFT'.", <Cpu className="text-purple-400" />);
+    addActivity("Orchestrator: Delegating to Creative Agent...", <Send className="text-purple-400" />);
+    
     try {
+      addActivity("Creative Agent: Generating asset with AI...", <Palette className="text-yellow-400" />);
       const result = await createNftFromPrompt({ prompt: nftPrompt });
+      
+      addActivity("Creative Agent: Minting NFT on Sei via Crossmint...", <Palette className="text-yellow-400" />);
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
       setNftResult(result);
-      addActivity("NFT created and listed.", <Palette className="text-green-400" />, result.listingStatus);
+      addActivity("Creative Agent: NFT created and listed.", <Palette className="text-green-400" />, result.listingStatus);
+      
+      addActivity("Creative Agent: Notifying user via AIDN...", <Send className="text-yellow-400" />);
+
     } catch (error) {
       console.error(error);
       toast({
@@ -189,7 +216,7 @@ export default function DashboardPage() {
         title: "Error",
         description: "Failed to create NFT.",
       });
-       addActivity("Failed to create NFT.", <Server className="text-red-400" />);
+       addActivity("Creative Agent: Failed to create NFT.", <Server className="text-red-400" />);
     } finally {
       setNftLoading(false);
     }
@@ -198,11 +225,18 @@ export default function DashboardPage() {
   const handleDeFiAction = async (action: DefiPaymentsAgentInput['action'], details: string) => {
     setPaymentLoading(true);
     setPaymentStatus(null);
-    addActivity(`DeFi Agent action: ${action}...`, <Banknote className="text-blue-400" />);
+    addActivity(`Orchestrator: Manual trigger for DeFi Agent - ${action}`, <Cpu className="text-purple-400" />);
+    addActivity(`Orchestrator: Delegating to DeFi Agent...`, <Send className="text-purple-400" />);
+    
     try {
+      addActivity(`DeFi Agent: Using Hive Intelligence for analysis...`, <BrainCircuit className="text-blue-400" />);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      addActivity(`DeFi Agent: Executing via Crossmint GOAT SDK...`, <Banknote className="text-blue-400" />);
       const result = await defiPaymentsAgent({ action, details });
+      
       setPaymentStatus(result.crossmintLog);
-      addActivity(`DeFi Agent action successful.`, <Banknote className="text-green-400" />, `Tx: ${result.transactionId.substring(0,12)}...`);
+      addActivity(`DeFi Agent: Action successful.`, <Banknote className="text-green-400" />, `Tx: ${result.transactionId.substring(0,12)}...`);
     } catch (error) {
       console.error(error);
       toast({
@@ -210,15 +244,18 @@ export default function DashboardPage() {
         title: "DeFi Action Failed",
         description: "Could not complete the transaction.",
       });
-      addActivity("DeFi Agent action failed.", <Server className="text-red-400" />);
+      addActivity("DeFi Agent: Action failed.", <Server className="text-red-400" />);
     } finally {
       setPaymentLoading(false);
     }
   };
 
   React.useEffect(() => {
-    handleSummarizeSentiment();
-  }, [handleSummarizeSentiment]);
+    if (walletAddress) {
+      handleRefreshAnalysis();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -252,19 +289,19 @@ export default function DashboardPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {sentimentLoading ? (
+                {analysisLoading ? (
                   <div className="space-y-2">
                     <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-4 w-3/4" />
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">{sentimentSummary}</p>
+                  <p className="text-sm text-muted-foreground">{analysisSummary}</p>
                 )}
               </CardContent>
               <CardFooter>
-                 <Button variant="ghost" size="sm" onClick={() => handleSummarizeSentiment()} disabled={sentimentLoading || !walletAddress}>
-                  {sentimentLoading ? <Loader className="w-4 h-4 mr-2 animate-spin" /> : null}
+                 <Button variant="ghost" size="sm" onClick={() => handleRefreshAnalysis()} disabled={analysisLoading || !walletAddress}>
+                  {analysisLoading ? <Loader className="w-4 h-4 mr-2 animate-spin" /> : null}
                   Refresh Analysis
                 </Button>
               </CardFooter>
@@ -366,7 +403,7 @@ export default function DashboardPage() {
                  {nftLoading && (
                     <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-lg border-border aspect-square">
                        <Loader className="w-8 h-8 mb-2 animate-spin text-accent" />
-                       <p className="text-sm text-muted-foreground">Generating NFT...</p>
+                       <p className="text-sm text-muted-foreground">Generating & Minting...</p>
                     </div>
                  )}
                  {nftResult && (
@@ -392,8 +429,11 @@ export default function DashboardPage() {
                 <CardDescription>Live feed of Orchestrator and Agent actions.</CardDescription>
               </CardHeader>
               <CardContent>
-                {activities.length === 0 && !sentimentLoading ? (
-                  <p className="text-sm text-center text-muted-foreground">No recent activity.</p>
+                {activities.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center pt-8 text-center">
+                    <Package className="w-12 h-12 mb-4 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">Connect wallet to see agent activity.</p>
+                  </div>
                 ) : (
                   <ul className="space-y-4">
                     {activities.map((activity, index) => (
@@ -420,39 +460,54 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="w-full h-[200px]">
-                  <ChartContainer config={chartConfig} className="w-full min-h-[200px]">
-                    <AreaChart
-                      accessibilityLayer
-                      data={portfolioData}
-                      margin={{
-                        left: 12,
-                        right: 12,
-                      }}
-                    >
-                      <CartesianGrid vertical={false} />
-                      <XAxis
-                        dataKey="month"
-                        tickLine={false}
-                        axisLine={false}
-                        tickMargin={8}
-                        tickFormatter={(value) => value.slice(0, 3)}
-                      />
-                       <YAxis
-                        tickLine={false}
-                        axisLine={false}
-                        tickMargin={8}
-                        tickCount={3}
-                      />
-                      <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
-                      <Area
-                        dataKey="value"
-                        type="natural"
-                        fill="var(--color-value)"
-                        fillOpacity={0.4}
-                        stroke="var(--color-value)"
-                      />
-                    </AreaChart>
-                  </ChartContainer>
+                  {portfolioData.length > 0 ? (
+                    <ChartContainer config={chartConfig} className="w-full min-h-[200px]">
+                      <AreaChart
+                        accessibilityLayer
+                        data={portfolioData}
+                        margin={{
+                          left: 0,
+                          right: 12,
+                          top: 5,
+                          bottom: 0,
+                        }}
+                      >
+                        <CartesianGrid vertical={false} />
+                        <XAxis
+                          dataKey="month"
+                          tickLine={false}
+                          axisLine={false}
+                          tickMargin={8}
+                          tickFormatter={(value) => value.slice(0, 3)}
+                        />
+                         <YAxis
+                          tickLine={false}
+                          axisLine={false}
+                          tickMargin={8}
+                          tickCount={3}
+                          tickFormatter={(value) => `$${value / 1000}k`}
+                        />
+                        <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
+                        <defs>
+                          <linearGradient id="fillValue" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="var(--color-value)" stopOpacity={0.8} />
+                            <stop offset="95%" stopColor="var(--color-value)" stopOpacity={0.1} />
+                          </linearGradient>
+                        </defs>
+                        <Area
+                          dataKey="value"
+                          type="natural"
+                          fill="url(#fillValue)"
+                          stroke="var(--color-value)"
+                        />
+                      </AreaChart>
+                    </ChartContainer>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center w-full h-full pt-8 text-center">
+                      <Wallet className="w-12 h-12 mb-4 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">Connect wallet to view portfolio</p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
