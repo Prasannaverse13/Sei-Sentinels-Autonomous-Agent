@@ -31,6 +31,8 @@ const chartConfig = {
   },
 };
 
+type DeFiActionPhase = "idle" | "analyzing" | "simulating" | "proposal_ready" | "executing";
+
 export default function DashboardPage() {
   const { toast } = useToast();
   const [activities, setActivities] = React.useState<Activity[]>([]);
@@ -52,6 +54,7 @@ export default function DashboardPage() {
   const [executionReport, setExecutionReport] = React.useState<string[] | null>(null);
   const [proposalDetails, setProposalDetails] = React.useState<ProposalDetails | null>(null);
   const [showProposalDialog, setShowProposalDialog] = React.useState(false);
+  const [defiPhase, setDeFiPhase] = React.useState<DeFiActionPhase>("idle");
 
 
   const addActivity = (description: string, icon: React.ReactNode, details?: string) => {
@@ -282,18 +285,25 @@ export default function DashboardPage() {
     try {
       let result;
       if(action === 'propose_trade'){
+        setDeFiPhase("analyzing");
         addActivity(`DeFi Agent: Using Hive Intelligence for analysis...`, <BrainCircuit className="text-blue-400" />);
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        setDeFiPhase("simulating");
         addActivity(`DeFi Agent: Performing on-chain simulation...`, <Server className="text-blue-400" />);
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
         result = await defiPaymentsAgent({ action, details, dataAnalysis: analysisResult?.summary });
         addActivity(`DeFi Agent: Analysis & simulation complete.`, <BrainCircuit className="text-green-400" />, result.hiveLog);
         
         if (result.proposal) {
             setProposalDetails(result.proposal);
             setShowProposalDialog(true);
+            setDeFiPhase("proposal_ready");
         }
 
       } else {
+        setDeFiPhase("executing");
         addActivity(`DeFi Agent: Initiating transaction via Crossmint GOAT SDK...`, <Banknote className="text-blue-400" />);
         result = await defiPaymentsAgent({ action, details });
         
@@ -302,13 +312,11 @@ export default function DashboardPage() {
         } else {
            addActivity(`DeFi Agent: Trade executed via Crossmint.`, <Banknote className="text-green-400" />, result.crossmintLog);
         }
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        addActivity(`DeFi Agent: Submitting transaction via ElizaOS...`, <Wallet className="text-blue-400" />);
+        addActivity(`DeFi Agent: Action successful.`, <Banknote className="text-green-400" />, `Tx: ${result.transactionId.substring(0,12)}...`);
       }
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      if(action !== 'propose_trade') {
-          addActivity(`DeFi Agent: Submitting transaction via ElizaOS...`, <Wallet className="text-blue-400" />);
-          addActivity(`DeFi Agent: Action successful.`, <Banknote className="text-green-400" />, `Tx: ${result.transactionId.substring(0,12)}...`);
-      }
 
       setPaymentResult(result);
       return result;
@@ -323,14 +331,26 @@ export default function DashboardPage() {
       return null;
     } finally {
       setPaymentLoading(false);
+      if (action !== "propose_trade" || !showProposalDialog) {
+        setDeFiPhase("idle");
+      }
     }
   };
 
   const handleApproveTransaction = async () => {
     setShowProposalDialog(false);
+    setDeFiPhase("executing");
     await handleDeFiAction('execute_trade', 'Execute proposed liquidity provision');
     setProposalDetails(null);
+    setDeFiPhase("idle");
   };
+
+  const handleCancelProposal = () => {
+    setShowProposalDialog(false);
+    setProposalDetails(null);
+    setDeFiPhase("idle");
+    addActivity("DeFi Agent: Transaction proposal cancelled by user.", <Bot className="text-yellow-400" />);
+  }
 
   React.useEffect(() => {
     if (walletAddress) {
@@ -338,6 +358,59 @@ export default function DashboardPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const renderDeFiCardContent = () => {
+    if (defiPhase === "analyzing" || defiPhase === "simulating" || defiPhase === "executing") {
+      return (
+         <div className="flex items-center justify-center p-8 space-x-3 text-lg text-center rounded-lg bg-muted/50">
+            <Loader className="w-6 h-6 animate-spin text-accent" />
+            <div className="text-left">
+              <p className="font-semibold">
+                {defiPhase === "analyzing" && "Analyzing Market Data..."}
+                {defiPhase === "simulating" && "Running On-Chain Simulation..."}
+                {defiPhase === "executing" && "Executing Transaction..."}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                The agent is working...
+              </p>
+            </div>
+          </div>
+      )
+    }
+
+     if (paymentResult?.paymentConfirmation) {
+        return (
+            <Card className="p-4 mt-4 border-dashed bg-muted/50">
+                <div className="flex items-start gap-4">
+                <CheckCircle2 className="w-8 h-8 text-green-400 shrink-0" />
+                <div>
+                    <h4 className="font-semibold text-green-400">A2A Payment Confirmed!</h4>
+                    <p className="text-sm text-muted-foreground">Paid 5 SEI to Data Sentinel (0x123...abc) for data services.</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs font-code">Tx:</span>
+                      <a href={`https://www.seiscan.app/pacific-1/txs/${paymentResult.transactionId}`} target="_blank" rel="noopener noreferrer" className="text-xs break-all text-accent hover:underline">
+                        {paymentResult.transactionId}
+                      </a>
+                    </div>
+                </div>
+                </div>
+            </Card>
+        );
+    }
+    
+    return (
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Button onClick={() => handleDeFiAction('propose_trade', 'Propose a trade to capitalize on market conditions')} disabled={!walletAddress || paymentLoading || isExecuting || defiPhase !== 'idle'}>
+          {paymentLoading && defiPhase !== 'idle' && <Loader className="w-4 h-4 mr-2 animate-spin" />}
+          <BrainCircuit />Propose Transaction
+        </Button>
+        <Button onClick={() => handleDeFiAction('execute_payment', 'Pay 0.5 SEI to DataSentinel for services')} disabled={!walletAddress || paymentLoading || isExecuting || defiPhase !== 'idle'}>
+          {paymentLoading && defiPhase !== 'idle' && <Loader className="w-4 h-4 mr-2 animate-spin" />}
+          <Send />Execute A2A Payment
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -487,32 +560,11 @@ export default function DashboardPage() {
                   DeFi & Payments Agent: Financial Actor
                 </CardTitle>
                 <CardDescription>
-                  Manually trigger autonomous portfolio actions and agent-to-agent payments.
+                  Trigger autonomous, AI-driven portfolio actions and agent-to-agent payments.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Button onClick={() => handleDeFiAction('propose_trade', 'Swap 20% of USDC for SEI')} disabled={!walletAddress || paymentLoading || isExecuting}>
-                    {paymentLoading && !isExecuting && <Loader className="w-4 h-4 mr-2 animate-spin" />}
-                    <BrainCircuit />Propose Transaction
-                  </Button>
-                  <Button onClick={() => handleDeFiAction('execute_payment', 'Pay 0.5 SEI to DataSentinel for services')} disabled={!walletAddress || paymentLoading || isExecuting}>
-                    {paymentLoading && !isExecuting && <Loader className="w-4 h-4 mr-2 animate-spin" />}
-                    <Send />Execute A2A Payment
-                  </Button>
-                </div>
-                 {paymentResult?.paymentConfirmation && (
-                    <Card className="p-4 mt-4 border-dashed bg-muted/50">
-                      <div className="flex items-center gap-3">
-                        <CheckCircle2 className="w-6 h-6 text-green-400" />
-                        <div>
-                          <h4 className="font-semibold text-green-400">A2A Payment Confirmed!</h4>
-                          <p className="text-sm font-code text-muted-foreground">Paid 5 SEI to Data Sentinel (0x123...abc) for data services.</p>
-                          <a href="#" className="text-xs break-all text-accent hover:underline" onClick={(e) => e.preventDefault()}>{`Tx: ${paymentResult.transactionId}`}</a>
-                        </div>
-                      </div>
-                    </Card>
-                 )}
+                {renderDeFiCardContent()}
               </CardContent>
             </Card>
             
@@ -697,7 +749,7 @@ export default function DashboardPage() {
               </Table>
             </div>
             <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setProposalDetails(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel onClick={handleCancelProposal}>Cancel</AlertDialogCancel>
               <AlertDialogAction onClick={handleApproveTransaction}>Approve & Execute</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
