@@ -45,6 +45,7 @@ export default function DashboardPage() {
   const [isConnecting, setIsConnecting] = React.useState(false);
   const [paymentLoading, setPaymentLoading] = React.useState(false);
   const [paymentStatus, setPaymentStatus] = React.useState<string | null>(null);
+  const [executingTaskIndex, setExecutingTaskIndex] = React.useState<number | null>(null);
 
   const addActivity = (description: string, icon: React.ReactNode, details?: string) => {
     setActivities(prev => [{
@@ -171,28 +172,32 @@ export default function DashboardPage() {
     setIsExecuting(true);
     addActivity("Orchestrator: Beginning autonomous execution with ElizaOS wallet...", <Cpu className="text-purple-400" />);
     
-    for (const task of plan) {
-       await new Promise(resolve => setTimeout(resolve, 1500));
-       addActivity(`Orchestrator: Executing task...`, <Send className="text-purple-400" />, task);
+    for (let i = 0; i < plan.length; i++) {
+      const task = plan[i];
+      setExecutingTaskIndex(i);
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      addActivity(`Orchestrator: Executing task...`, <Send className="text-purple-400" />, task);
 
-       if (task.includes("DataSentinel")) {
-         addActivity("Orchestrator: Delegating to Data Sentinel...", <Send className="text-purple-400" />);
-         await handleRefreshAnalysis();
-       } else if (task.includes("DeFiPaymentsAgent")) {
-         const actionMatch = task.match(/action: (\w+)/);
-         const detailsMatch = task.match(/details: "([^"]+)"/);
-         if(actionMatch && detailsMatch) {
-           const action = actionMatch[1] as DefiPaymentsAgentInput['action'];
-           const details = detailsMatch[1];
-           addActivity(`Orchestrator: Delegating to DeFi Agent...`, <Send className="text-purple-400" />);
-           await handleDeFiAction(action, details, true);
-         }
-       } else if (task.includes("ConsumerAgent")) {
-          addActivity(`Orchestrator: Delegating to Consumer Agent...`, <Send className="text-purple-400" />);
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          addActivity("Consumer Agent: Notified user of plan completion.", <Bot className="text-green-400" />, "Status: Plan execution complete");
-       }
+      if (task.includes("DataSentinel")) {
+        addActivity("Orchestrator: Delegating to Data Sentinel...", <Send className="text-purple-400" />);
+        await handleRefreshAnalysis();
+      } else if (task.includes("DeFiPaymentsAgent")) {
+        const actionMatch = task.match(/action: (\w+)/);
+        const detailsMatch = task.match(/details: "([^"]+)"/);
+        if(actionMatch && detailsMatch) {
+          const action = actionMatch[1] as DefiPaymentsAgentInput['action'];
+          const details = detailsMatch[1];
+          addActivity(`Orchestrator: Delegating to DeFi Agent...`, <Send className="text-purple-400" />);
+          await handleDeFiAction(action, details, true);
+        }
+      } else if (task.includes("ConsumerAgent")) {
+        addActivity(`Orchestrator: Delegating to Consumer Agent...`, <Send className="text-purple-400" />);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        addActivity("Consumer Agent: Notified user of plan completion.", <Bot className="text-green-400" />, "Status: Plan execution complete");
+      }
     }
+    
+    setExecutingTaskIndex(null);
     await new Promise(resolve => setTimeout(resolve, 1000));
     addActivity("Orchestrator: Plan execution complete. State updated on Sei via MCP.", <BrainCircuit className="text-green-400" />);
     setIsExecuting(false);
@@ -379,7 +384,8 @@ export default function DashboardPage() {
                       <h4 className="mb-2 text-sm font-semibold">Generated Plan:</h4>
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                         {plan.map((strategy, index) => (
-                          <div key={index} className="p-3 text-sm rounded-md bg-muted/50 font-code">
+                          <div key={index} className={`p-3 text-sm rounded-md bg-muted/50 font-code ${isExecuting && executingTaskIndex === index ? 'ring-2 ring-accent' : ''}`}>
+                            {isExecuting && executingTaskIndex === index && <Loader className="inline-block w-4 h-4 mr-2 animate-spin" />}
                             {strategy}
                           </div>
                         ))}
@@ -591,3 +597,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
