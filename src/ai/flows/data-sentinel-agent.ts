@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview Data Sentinel Agent: Gathers and analyzes onchain and offchain data.
+ * @fileOverview Data Sentinel Agent: The Onchain & Offchain Intelligence Hub.
  *
  * - dataSentinelAgent - A function that fetches and analyzes data.
  * - DataSentinelAgentInput - The input type for the dataSentinelAgent function.
@@ -11,8 +11,7 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const DataSentinelAgentInputSchema = z.object({
-  query: z.string().describe('The data query, e.g., "Analyze market sentiment for SEI".'),
-  // In a real scenario, this would include wallet addresses to watch, etc.
+  query: z.string().describe('The data query, e.g., "Get a comprehensive market overview with a focus on SEI and memecoin sentiment".'),
 });
 export type DataSentinelAgentInput = z.infer<typeof DataSentinelAgentInputSchema>;
 
@@ -35,16 +34,15 @@ const dataSentinelAgentFlow = ai.defineFlow(
   },
   async (input) => {
     // 1. Fetch off-chain data from Rivalz Oracles (simulated).
-    const offchainLog = "Queried Rivalz Oracles for market sentiment and social media mentions.";
-    const offchainData = { sentiment: "cautiously optimistic" };
+    const offchainLog = "Queried Rivalz Oracles for social media sentiment (SEI, memecoins), GitHub developer activity, and upcoming network upgrade news.";
+    const offchainData = { sentiment: "cautiously optimistic", devActivity: "high", news: "v2 upgrade next month" };
 
-    // 2. Fetch on-chain data via custom MCP Server (simulated).
-    // This would query wallet behaviors, NFT movements, etc.
-    const onchainLog = "Queried Sei MCP Server for whale wallet movements and memecoin inflows.";
-    const onchainData = { whaleActivity: "Accumulation detected", memecoinTrend: "Stable" };
+    // 2. Fetch on-chain data via custom Sei MCP Server (simulated).
+    const onchainLog = "Queried custom Sei MCP Server for whale wallet accumulation, NFT collection floor price changes, and memecoin inflows.";
+    const onchainData = { whaleActivity: "net accumulation", nftTrend: "stable", memecoinTrend: "rising" };
     
     // 3. Analyze and synthesize the data.
-    const analysis = `Market sentiment is ${offchainData.sentiment} based on off-chain data. On-chain, whale wallets are showing signs of ${onchainData.whaleActivity.toLowerCase()}, and memecoin trends appear ${onchainData.memecoinTrend.toLowerCase()}. Key factors include upcoming network upgrades and increased developer activity.`;
+    const analysis = `Overall market sentiment is ${offchainData.sentiment}, driven by ${offchainData.devActivity} developer activity and news of a ${offchainData.news}. On-chain, whale wallets are showing ${onchainData.whaleActivity}, NFT floors are ${onchainData.nftTrend}, and memecoin interest is ${onchainData.memecoinTrend}.`;
 
     // 4. Store the data hash on a Sei native contract (simulated).
     // This creates a verifiable, onchain data layer.

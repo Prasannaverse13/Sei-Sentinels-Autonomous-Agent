@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { createNftFromPrompt } from "@/ai/flows/create-nft-from-prompt";
+import { createNftFromPrompt, CreateNftFromPromptOutput } from "@/ai/flows/create-nft-from-prompt";
 import { dataSentinelAgent } from "@/ai/flows/data-sentinel-agent";
 import { orchestratorAgent } from "@/ai/flows/orchestrator-agent";
 import { defiPaymentsAgent, DefiPaymentsAgentInput } from "@/ai/flows/defi-payments-agent";
@@ -41,13 +41,13 @@ const connectedPortfolioData = [
 export default function DashboardPage() {
   const { toast } = useToast();
   const [activities, setActivities] = React.useState<Activity[]>([]);
-  const [analysisSummary, setAnalysisSummary] = React.useState("");
+  const [analysisSummary, setAnalysisSummary] = React.useState("Connect your wallet to get the latest intelligence brief from the Data Sentinel.");
   const [analysisLoading, setAnalysisLoading] = React.useState(false);
   const [investmentGoal, setInvestmentGoal] = React.useState("Maximize my DeFi portfolio yield with a focus on stablecoins and blue-chip assets.");
   const [strategies, setStrategies] = React.useState<string[]>([]);
   const [strategyLoading, setStrategyLoading] = React.useState(false);
-  const [nftPrompt, setNftPrompt] = React.useState("A futuristic Sei Sentinel robot surfing on a wave of data");
-  const [nftResult, setNftResult] = React.useState<{ nftDataUri: string; listingStatus: string } | null>(null);
+  const [nftPrompt, setNftPrompt] = React.useState("A cyberpunk whale swimming in a sea of code");
+  const [nftResult, setNftResult] = React.useState<CreateNftFromPromptOutput | null>(null);
   const [nftLoading, setNftLoading] = React.useState(false);
   const [walletAddress, setWalletAddress] = React.useState<string | null>(null);
   const [portfolioData, setPortfolioData] = React.useState<any[]>([]);
@@ -61,7 +61,7 @@ export default function DashboardPage() {
       icon,
       details,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }, ...prev].slice(0, 5));
+    }, ...prev].slice(0, 10));
   };
   
   const handleConnectWallet = async () => {
@@ -75,14 +75,13 @@ export default function DashboardPage() {
     }
 
     setIsConnecting(true);
-    addActivity("Connecting to wallet...", <Wallet className="text-blue-400" />);
+    addActivity("Connecting to Compass Wallet...", <Wallet className="text-blue-400" />);
     try {
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       const address = accounts[0];
       setWalletAddress(address);
-      addActivity("Wallet connected successfully.", <Wallet className="text-green-400" />);
+      addActivity("Wallet connected successfully.", <Wallet className="text-green-400" />, `Address: ${address.substring(0, 6)}...`);
       
-      // Simulate fetching real portfolio data
       addActivity("Fetching portfolio data...", <DatabaseZap className="text-blue-400" />);
       await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
       setPortfolioData(connectedPortfolioData);
@@ -118,14 +117,19 @@ export default function DashboardPage() {
     addActivity("Orchestrator: Delegating to Data Sentinel...", <Send className="text-purple-400" />);
     
     try {
-      addActivity("Data Sentinel: Fetching off-chain data...", <DatabaseZap className="text-blue-400" />);
-      const result = await dataSentinelAgent({ query: "Analyze market sentiment for SEI" });
+      const result = await dataSentinelAgent({ query: "Get a comprehensive market overview with a focus on SEI and memecoin sentiment" });
+      
+      addActivity("Data Sentinel: Fetching off-chain data...", <DatabaseZap className="text-blue-400" />, result.offchainLog);
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       addActivity("Data Sentinel: Fetching on-chain data...", <DatabaseZap className="text-blue-400" />, result.onchainLog);
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate analysis delay
+      await new Promise(resolve => setTimeout(resolve, 1500)); 
       
+      addActivity("Data Sentinel: Synthesizing data...", <BrainCircuit className="text-blue-400" />);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
       setAnalysisSummary(result.analysis);
-      addActivity("Data Sentinel: Analysis complete.", <BrainCircuit className="text-green-400" />);
+      addActivity("Data Sentinel: Analysis complete. Brief updated.", <BrainCircuit className="text-green-400" />);
     } catch (error) {
       console.error(error);
       toast({
@@ -152,23 +156,22 @@ export default function DashboardPage() {
     setStrategyLoading(true);
     setStrategies([]);
     
-    addActivity("Orchestrator: Goal received - 'Generate investment plan'.", <Cpu className="text-purple-400" />);
+    addActivity("Orchestrator: Goal received.", <Cpu className="text-purple-400" />, `Goal: "${investmentGoal}"`);
     
     try {
       const result = await orchestratorAgent({ goal: investmentGoal });
-      addActivity("Orchestrator: Plan generated.", <BrainCircuit className="text-green-400" />, result.executionLog);
+      addActivity("Orchestrator: Plan generated with Cambrian Agent Kit.", <BrainCircuit className="text-green-400" />, result.executionLog);
       setStrategies(result.plan);
       
-      // Simulate executing the plan
       await new Promise(resolve => setTimeout(resolve, 1000));
-      addActivity("Orchestrator: Executing plan...", <Cpu className="text-purple-400" />);
+      addActivity("Orchestrator: Beginning autonomous execution...", <Cpu className="text-purple-400" />);
       
       for (const task of result.plan) {
          await new Promise(resolve => setTimeout(resolve, 1500));
-         addActivity(`Orchestrator: ${task}`, <Send className="text-purple-400" />);
+         addActivity(`Orchestrator: Delegating task...`, <Send className="text-purple-400" />, task);
       }
        await new Promise(resolve => setTimeout(resolve, 1000));
-       addActivity("Orchestrator: Plan execution complete.", <BrainCircuit className="text-green-400" />);
+       addActivity("Orchestrator: Plan execution complete. State updated on Sei via MCP.", <BrainCircuit className="text-green-400" />);
 
     } catch (error) {
       console.error(error);
@@ -194,20 +197,23 @@ export default function DashboardPage() {
     }
     setNftLoading(true);
     setNftResult(null);
-    addActivity("Orchestrator: Goal received - 'Create NFT'.", <Cpu className="text-purple-400" />);
-    addActivity("Orchestrator: Delegating to Creative Agent...", <Send className="text-purple-400" />);
+    addActivity("Orchestrator: Goal received - 'Create and list an NFT'.", <Cpu className="text-purple-400" />);
+    addActivity("Orchestrator: Delegating to Creative Agent (AIDN)...", <Send className="text-purple-400" />);
     
     try {
       addActivity("Creative Agent: Generating asset with AI...", <Palette className="text-yellow-400" />);
       const result = await createNftFromPrompt({ prompt: nftPrompt });
       
-      addActivity("Creative Agent: Minting NFT on Sei via Crossmint...", <Palette className="text-yellow-400" />);
+      addActivity("Creative Agent: Minting NFT on Sei via Crossmint GOAT SDK...", <Palette className="text-yellow-400" />);
       await new Promise(resolve => setTimeout(resolve, 1500));
       
+      addActivity("Creative Agent: Listing NFT on marketplace...", <Palette className="text-yellow-400" />);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
       setNftResult(result);
       addActivity("Creative Agent: NFT created and listed.", <Palette className="text-green-400" />, result.listingStatus);
       
-      addActivity("Creative Agent: Notifying user via AIDN...", <Send className="text-yellow-400" />);
+      addActivity("Creative Agent: Notifying user...", <Send className="text-yellow-400" />, result.notificationStatus);
 
     } catch (error) {
       console.error(error);
@@ -225,15 +231,23 @@ export default function DashboardPage() {
   const handleDeFiAction = async (action: DefiPaymentsAgentInput['action'], details: string) => {
     setPaymentLoading(true);
     setPaymentStatus(null);
-    addActivity(`Orchestrator: Manual trigger for DeFi Agent - ${action}`, <Cpu className="text-purple-400" />);
+    addActivity(`Orchestrator: Manual trigger for DeFi Agent.`, <Cpu className="text-purple-400" />, `Action: ${action}`);
     addActivity(`Orchestrator: Delegating to DeFi Agent...`, <Send className="text-purple-400" />);
     
     try {
-      addActivity(`DeFi Agent: Using Hive Intelligence for analysis...`, <BrainCircuit className="text-blue-400" />);
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      let result;
+      if(action === 'propose_trade'){
+        addActivity(`DeFi Agent: Using Hive Intelligence for analysis...`, <BrainCircuit className="text-blue-400" />);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        result = await defiPaymentsAgent({ action, details, dataAnalysis: analysisSummary });
+        addActivity(`DeFi Agent: Analysis complete.`, <BrainCircuit className="text-green-400" />, result.hiveLog);
+      } else {
+        addActivity(`DeFi Agent: Initiating A2A payment...`, <Banknote className="text-blue-400" />);
+        result = await defiPaymentsAgent({ action, details });
+      }
 
-      addActivity(`DeFi Agent: Executing via Crossmint GOAT SDK...`, <Banknote className="text-blue-400" />);
-      const result = await defiPaymentsAgent({ action, details });
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      addActivity(`DeFi Agent: Submitting transaction via Crossmint/ElizaOS...`, <Banknote className="text-blue-400" />);
       
       setPaymentStatus(result.crossmintLog);
       addActivity(`DeFi Agent: Action successful.`, <Banknote className="text-green-400" />, `Tx: ${result.transactionId.substring(0,12)}...`);
@@ -282,10 +296,10 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <DatabaseZap className="w-6 h-6 text-primary" />
-                  Data Sentinel
+                  Data Sentinel: Intelligence Brief
                 </CardTitle>
                 <CardDescription>
-                  Data Sentinel&apos;s real-time analysis of onchain and offchain data.
+                  Continuous onchain & offchain analysis hub.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -311,10 +325,10 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Bot className="w-6 h-6 text-primary" />
-                  Orchestrator Agent
+                  Orchestrator Agent: Commander
                 </CardTitle>
                 <CardDescription>
-                  Define a high-level goal and let the Orchestrator generate and execute agent strategies.
+                  Define a high-level goal and watch the Orchestrator build and execute a plan.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -352,19 +366,19 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                    <SeiWhale className="w-6 h-6 text-primary" />
-                  DeFi & Payments Agent
+                  DeFi & Payments Agent: Financial Actor
                 </CardTitle>
                 <CardDescription>
-                  Autonomous portfolio management and payments using the Crossmint GOAT SDK.
+                  Manually trigger autonomous portfolio actions and agent-to-agent payments.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Button onClick={() => handleDeFiAction('propose_trade', 'Buy 100 SEI')} disabled={!walletAddress || paymentLoading}>
+                  <Button onClick={() => handleDeFiAction('propose_trade', 'Swap 20% of USDC for SEI')} disabled={!walletAddress || paymentLoading}>
                     {paymentLoading && <Loader className="w-4 h-4 mr-2 animate-spin" />}
                     <Banknote />Propose Transaction
                   </Button>
-                  <Button onClick={() => handleDeFiAction('execute_payment', 'Pay 5 SEI to agent 0x... for data services')} disabled={!walletAddress || paymentLoading}>
+                  <Button onClick={() => handleDeFiAction('execute_payment', 'Pay 0.5 SEI to DataSentinel for services')} disabled={!walletAddress || paymentLoading}>
                     {paymentLoading && <Loader className="w-4 h-4 mr-2 animate-spin" />}
                     <Send />Execute A2A Payment
                   </Button>
@@ -381,10 +395,10 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Palette className="w-6 h-6 text-primary" />
-                  Creative Agent / Art Broker
+                  Creative Agent: Art Broker
                 </CardTitle>
                 <CardDescription>
-                  Generate and list a unique NFT on a Sei marketplace based on your prompt.
+                  Generate, mint, and list a unique NFT on a Sei marketplace based on your prompt.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -403,7 +417,7 @@ export default function DashboardPage() {
                  {nftLoading && (
                     <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-lg border-border aspect-square">
                        <Loader className="w-8 h-8 mb-2 animate-spin text-accent" />
-                       <p className="text-sm text-muted-foreground">Generating & Minting...</p>
+                       <p className="text-sm text-muted-foreground">Generating, Minting, Listing...</p>
                     </div>
                  )}
                  {nftResult && (
@@ -412,6 +426,7 @@ export default function DashboardPage() {
                          <Image src={nftResult.nftDataUri} alt="Generated NFT" fill className="object-cover" />
                         </div>
                         <p className="mt-2 text-sm text-center text-green-400 font-code">{nftResult.listingStatus}</p>
+                         <p className="mt-2 text-xs text-center text-muted-foreground font-code">{nftResult.notificationStatus}</p>
                     </div>
                  )}
               </CardContent>
@@ -435,18 +450,20 @@ export default function DashboardPage() {
                     <p className="text-sm text-muted-foreground">Connect wallet to see agent activity.</p>
                   </div>
                 ) : (
-                  <ul className="space-y-4">
-                    {activities.map((activity, index) => (
-                      <li key={index} className="flex items-start gap-3">
-                        <span className="p-2 rounded-full bg-muted">{activity.icon}</span>
-                        <div className="flex-1">
-                          <p className="text-sm">{activity.description}</p>
-                           {activity.details && <p className="text-xs text-muted-foreground font-code">{activity.details}</p>}
-                          <p className="text-xs text-muted-foreground">{activity.time}</p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
+                   <ScrollArea className="h-[600px]">
+                      <ul className="space-y-4">
+                        {activities.map((activity, index) => (
+                          <li key={index} className="flex items-start gap-3">
+                            <span className="p-2 rounded-full bg-muted">{activity.icon}</span>
+                            <div className="flex-1">
+                              <p className="text-sm">{activity.description}</p>
+                               {activity.details && <p className="text-xs text-muted-foreground font-code">{activity.details}</p>}
+                              <p className="text-xs text-muted-foreground">{activity.time}</p>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </ScrollArea>
                 )}
               </CardContent>
             </Card>
@@ -461,7 +478,7 @@ export default function DashboardPage() {
               <CardContent>
                 <div className="w-full h-[200px]">
                   {portfolioData.length > 0 ? (
-                    <ChartContainer config={chartConfig} className="w-full min-h-[200px]">
+                     <ChartContainer config={chartConfig} className="w-full min-h-[200px]">
                       <AreaChart
                         accessibilityLayer
                         data={portfolioData}

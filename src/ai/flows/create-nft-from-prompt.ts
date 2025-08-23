@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview Generates an NFT from a text prompt and lists it for sale on a Sei-based marketplace.
+ * @fileOverview Autonomous Art Broker: Generates an NFT, lists it for sale, and notifies the user.
  *
  * - createNftFromPrompt - A function that handles the NFT creation and listing process.
  * - CreateNftFromPromptInput - The input type for the createNftFromPrompt function.
@@ -19,6 +19,7 @@ export type CreateNftFromPromptInput = z.infer<typeof CreateNftFromPromptInputSc
 const CreateNftFromPromptOutputSchema = z.object({
   nftDataUri: z.string().describe('The data URI of the generated NFT image.'),
   listingStatus: z.string().describe('The status of the NFT listing on the marketplace.'),
+  notificationStatus: z.string().describe('The status of the user notification.'),
 });
 export type CreateNftFromPromptOutput = z.infer<typeof CreateNftFromPromptOutputSchema>;
 
@@ -47,14 +48,15 @@ const createNftFromPromptFlow = ai.defineFlow(
     }
     const nftDataUri = media.url;
 
-    // 2. Mint the NFT on the Sei network and list it for sale on a marketplace.
-    // In a real implementation, this would involve using the Crossmint GOAT SDK
-    // to mint and another Sei SDK to list on a marketplace.
-    const listingStatus = 'NFT minted and listed for sale on a Sei marketplace (simulated).';
+    // 2. Mint the NFT on the Sei network using the Crossmint GOAT SDK (simulated).
+    const mintLog = "Crossmint GOAT SDK: Minting NFT on Sei network...";
 
-    // 3. Notify the user via the Consumer Agent (AIDN).
-    // (simulated)
+    // 3. List the NFT for sale on a marketplace (simulated).
+    const listingStatus = 'NFT listed for sale on a Sei marketplace (simulated).';
+
+    // 4. Notify the user via the Consumer Agent (AIDN) (simulated).
+    const notificationStatus = 'Notified user via AIDN on Telegram.';
     
-    return {nftDataUri, listingStatus};
+    return {nftDataUri, listingStatus, notificationStatus};
   }
 );
