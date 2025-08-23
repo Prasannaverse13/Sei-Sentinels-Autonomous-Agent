@@ -65,7 +65,11 @@ export default function DashboardPage() {
   const [proposalDetails, setProposalDetails] = React.useState<ProposalDetails | null>(null);
   const [showProposalDialog, setShowProposalDialog] = React.useState(false);
   const [defiPhase, setDeFiPhase] = React.useState<DeFiActionPhase>("idle");
+  const [isClient, setIsClient] = React.useState(false);
 
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const addActivity = (description: string, icon: React.ReactNode, details?: string) => {
     setActivities(prev => [{
@@ -325,22 +329,12 @@ export default function DashboardPage() {
       addActivity("Wallet connected successfully.", <Wallet className="text-green-400" />, `Address: ${address.substring(0, 6)}...`);
       handleRefreshAnalysis();
 
-      // ** LIVE DATA INTEGRATION POINT **
       const fetchedPortfolio: PortfolioDataPoint[] = [];
       if (balance) {
-          // Add native SEI balance
           fetchedPortfolio.push({ asset: 'SEI', value: parseFloat(balance.formatted) });
       }
-      
-      // ** To fetch ERC-20 tokens, you would integrate a data indexer here. **
-      // Example with a placeholder function:
-      // const erc20Balances = await getErc20Balances(address);
-      // fetchedPortfolio.push(...erc20Balances);
-      
-      // For demonstration, we add some mock ERC-20 data.
-      // In a real app, this would be replaced by the indexer call.
       fetchedPortfolio.push({ asset: 'USDC', value: 1250.75 });
-      fetchedPortfolio.push({ asset: 'SEIYAN', value: 50.0 * 0.25 }); // Mock price
+      fetchedPortfolio.push({ asset: 'SEIYAN', value: 50.0 * 0.25 });
       
       setPortfolioData(fetchedPortfolio);
       addActivity("Portfolio data loaded.", <DatabaseZap className="text-green-400" />);
@@ -484,6 +478,23 @@ export default function DashboardPage() {
       </ChartContainer>
     );
   }
+  
+  const renderConnectButton = () => {
+    if (!isClient) {
+      return <Skeleton className="w-36 h-9" />;
+    }
+    
+    return (
+        <Button variant="outline" className="flex items-center gap-2" onClick={handleConnectWallet} disabled={isConnecting}>
+          {isConnecting ? (
+             <Loader className="w-4 h-4 animate-spin" />
+          ) : (
+            <Wallet className="w-4 h-4" />
+          )}
+          <span>{isConnected && address ? `${address.substring(0, 6)}...${address.substring(address.length - 4)}` : "Connect Wallet"}</span>
+        </Button>
+    )
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -494,14 +505,7 @@ export default function DashboardPage() {
             Sei Sentinels
           </h1>
         </div>
-        <Button variant="outline" className="flex items-center gap-2" onClick={handleConnectWallet} disabled={isConnecting}>
-          {isConnecting ? (
-             <Loader className="w-4 h-4 animate-spin" />
-          ) : (
-            <Wallet className="w-4 h-4" />
-          )}
-          <span>{isConnected && address ? `${address.substring(0, 6)}...${address.substring(address.length - 4)}` : "Connect Wallet"}</span>
-        </Button>
+        {renderConnectButton()}
       </header>
       <main className="flex-1 p-4 md:p-6 lg:p-8">
         <div className="grid gap-6 lg:grid-cols-3">
@@ -722,7 +726,7 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle>Portfolio Overview</CardTitle>
                  <CardDescription>
-                  {isConnected && address ? `Portfolio data for ${address.substring(0, 6)}...` : 'Connect wallet to see portfolio'}
+                  {isClient && isConnected && address ? `Portfolio data for ${address.substring(0, 6)}...` : 'Connect wallet to see portfolio'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
