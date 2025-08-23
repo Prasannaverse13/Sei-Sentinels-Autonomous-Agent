@@ -31,6 +31,16 @@ const chartConfig = {
   },
 };
 
+const samplePortfolioData = [
+  { month: "Jan", value: 18600 },
+  { month: "Feb", value: 30500 },
+  { month: "Mar", value: 23700 },
+  { month: "Apr", value: 27800 },
+  { month: "May", value: 20900 },
+  { month: "Jun", value: 23900 },
+];
+
+
 type DeFiActionPhase = "idle" | "analyzing" | "simulating" | "proposal_ready" | "executing";
 
 export default function DashboardPage() {
@@ -87,12 +97,11 @@ export default function DashboardPage() {
       
       addActivity("Fetching portfolio data...", <DatabaseZap className="text-blue-400" />);
       // ** LIVE DATA INTEGRATION POINT **
-      // Replace this with a call to a live data service (e.g., Zapper, DeBank, or direct node RPC)
-      // to fetch the user's actual token balances and historical values.
-      // For now, we will clear the portfolio data to indicate a live connection is needed.
+      // In a real application, you would replace this sample data with a call to a live data service
+      // (e.g., Zapper, DeBank, or a direct node RPC) to fetch the user's actual token balances.
       await new Promise(resolve => setTimeout(resolve, 1000));
-      setPortfolioData([]);
-      addActivity("Portfolio data source connected. Ready for live data.", <DatabaseZap className="text-green-400" />);
+      setPortfolioData(samplePortfolioData);
+      addActivity("Portfolio data loaded.", <DatabaseZap className="text-green-400" />);
       
       toast({
         title: "Wallet Connected",
