@@ -3,7 +3,7 @@
 import Image from "next/image";
 import * as React from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
-import { Cpu, DatabaseZap, Bot, Palette, Loader, Server, Wallet, BrainCircuit, Banknote, Package, Send, Play } from "lucide-react";
+import { Cpu, DatabaseZap, Bot, Palette, Loader, Server, Wallet, BrainCircuit, Banknote, Package, Send, Play, CheckCircle2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,9 +17,12 @@ import { orchestratorAgent } from "@/ai/flows/orchestrator-agent";
 import { defiPaymentsAgent, DefiPaymentsAgentInput, DefiPaymentsAgentOutput } from "@/ai/flows/defi-payments-agent";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { AppLogo, SeiWhale } from "@/components/icons";
-import type { Activity } from "@/lib/types";
+import type { Activity, ProposalDetails } from "@/lib/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
 
 const chartConfig = {
   value: {
@@ -44,9 +47,11 @@ export default function DashboardPage() {
   const [portfolioData, setPortfolioData] = React.useState<any[]>([]);
   const [isConnecting, setIsConnecting] = React.useState(false);
   const [paymentLoading, setPaymentLoading] = React.useState(false);
-  const [paymentStatus, setPaymentStatus] = React.useState<string | null>(null);
+  const [paymentResult, setPaymentResult] = React.useState<DefiPaymentsAgentOutput | null>(null);
   const [executingTaskIndex, setExecutingTaskIndex] = React.useState<number | null>(null);
   const [executionReport, setExecutionReport] = React.useState<string[] | null>(null);
+  const [proposalDetails, setProposalDetails] = React.useState<ProposalDetails | null>(null);
+  const [showProposalDialog, setShowProposalDialog] = React.useState(false);
 
 
   const addActivity = (description: string, icon: React.ReactNode, details?: string) => {
@@ -268,7 +273,7 @@ export default function DashboardPage() {
 
   const handleDeFiAction = async (action: DefiPaymentsAgentInput['action'], details: string, isFromPlan = false): Promise<DefiPaymentsAgentOutput | null> => {
     setPaymentLoading(true);
-    setPaymentStatus(null);
+    setPaymentResult(null);
     if (!isFromPlan) {
       addActivity(`Orchestrator: Manual trigger for DeFi Agent.`, <Cpu className="text-purple-400" />, `Action: ${action}`);
       addActivity(`Orchestrator: Delegating to DeFi Agent...`, <Send className="text-purple-400" />);
@@ -278,20 +283,34 @@ export default function DashboardPage() {
       let result;
       if(action === 'propose_trade'){
         addActivity(`DeFi Agent: Using Hive Intelligence for analysis...`, <BrainCircuit className="text-blue-400" />);
+        addActivity(`DeFi Agent: Performing on-chain simulation...`, <Server className="text-blue-400" />);
         await new Promise(resolve => setTimeout(resolve, 1000));
         result = await defiPaymentsAgent({ action, details, dataAnalysis: analysisResult?.summary });
-        addActivity(`DeFi Agent: Analysis complete.`, <BrainCircuit className="text-green-400" />, result.hiveLog);
+        addActivity(`DeFi Agent: Analysis & simulation complete.`, <BrainCircuit className="text-green-400" />, result.hiveLog);
+        
+        if (result.proposal) {
+            setProposalDetails(result.proposal);
+            setShowProposalDialog(true);
+        }
+
       } else {
-        addActivity(`DeFi Agent: Initiating A2A payment via Crossmint GOAT SDK...`, <Banknote className="text-blue-400" />);
+        addActivity(`DeFi Agent: Initiating transaction via Crossmint GOAT SDK...`, <Banknote className="text-blue-400" />);
         result = await defiPaymentsAgent({ action, details });
-        addActivity(`DeFi Agent: Payment processed via Crossmint.`, <Banknote className="text-green-400" />, result.crossmintLog);
+        
+        if (action === 'execute_payment') {
+           addActivity(`DeFi Agent: A2A Payment processed via Crossmint.`, <Banknote className="text-green-400" />, result.crossmintLog);
+        } else {
+           addActivity(`DeFi Agent: Trade executed via Crossmint.`, <Banknote className="text-green-400" />, result.crossmintLog);
+        }
       }
 
       await new Promise(resolve => setTimeout(resolve, 1000));
-      addActivity(`DeFi Agent: Submitting transaction via Crossmint/ElizaOS...`, <Banknote className="text-blue-400" />);
-      
-      setPaymentStatus(result.status);
-      addActivity(`DeFi Agent: Action successful.`, <Banknote className="text-green-400" />, `Tx: ${result.transactionId.substring(0,12)}...`);
+      if(action !== 'propose_trade') {
+          addActivity(`DeFi Agent: Submitting transaction via ElizaOS...`, <Wallet className="text-blue-400" />);
+          addActivity(`DeFi Agent: Action successful.`, <Banknote className="text-green-400" />, `Tx: ${result.transactionId.substring(0,12)}...`);
+      }
+
+      setPaymentResult(result);
       return result;
     } catch (error) {
       console.error(error);
@@ -305,6 +324,12 @@ export default function DashboardPage() {
     } finally {
       setPaymentLoading(false);
     }
+  };
+
+  const handleApproveTransaction = async () => {
+    setShowProposalDialog(false);
+    await handleDeFiAction('execute_trade', 'Execute proposed liquidity provision');
+    setProposalDetails(null);
   };
 
   React.useEffect(() => {
@@ -469,17 +494,24 @@ export default function DashboardPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Button onClick={() => handleDeFiAction('propose_trade', 'Swap 20% of USDC for SEI')} disabled={!walletAddress || paymentLoading || isExecuting}>
                     {paymentLoading && !isExecuting && <Loader className="w-4 h-4 mr-2 animate-spin" />}
-                    <Banknote />Propose Transaction
+                    <BrainCircuit />Propose Transaction
                   </Button>
                   <Button onClick={() => handleDeFiAction('execute_payment', 'Pay 0.5 SEI to DataSentinel for services')} disabled={!walletAddress || paymentLoading || isExecuting}>
                     {paymentLoading && !isExecuting && <Loader className="w-4 h-4 mr-2 animate-spin" />}
                     <Send />Execute A2A Payment
                   </Button>
                 </div>
-                 {paymentStatus && (
-                    <div className="p-3 text-sm rounded-md bg-muted/50 font-code text-green-400">
-                        {paymentStatus}
-                    </div>
+                 {paymentResult?.paymentConfirmation && (
+                    <Card className="p-4 mt-4 border-dashed bg-muted/50">
+                      <div className="flex items-center gap-3">
+                        <CheckCircle2 className="w-6 h-6 text-green-400" />
+                        <div>
+                          <h4 className="font-semibold text-green-400">A2A Payment Confirmed!</h4>
+                          <p className="text-sm font-code text-muted-foreground">Paid 5 SEI to Data Sentinel (0x123...abc) for data services.</p>
+                          <a href="#" className="text-xs break-all text-accent hover:underline" onClick={(e) => e.preventDefault()}>{`Tx: ${paymentResult.transactionId}`}</a>
+                        </div>
+                      </div>
+                    </Card>
                  )}
               </CardContent>
             </Card>
@@ -624,6 +656,54 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
+
+      {proposalDetails && (
+        <AlertDialog open={showProposalDialog} onOpenChange={setShowProposalDialog}>
+          <AlertDialogContent className="max-w-2xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Transaction Proposal</AlertDialogTitle>
+              <AlertDialogDescription>
+                The DeFi & Payments Agent has analyzed the market and proposes the following action. Please review and confirm.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="my-4">
+              <Table>
+                <TableBody>
+                  <TableRow>
+                    <TableCell className="font-semibold">Transaction Type</TableCell>
+                    <TableCell>{proposalDetails.transactionType}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-semibold">Strategy</TableCell>
+                    <TableCell>{proposalDetails.strategy}</TableCell>
+                  </TableRow>
+                   <TableRow>
+                    <TableCell className="font-semibold">Assets Involved</TableCell>
+                    <TableCell>{proposalDetails.assetsInvolved}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-semibold">Estimated Yield</TableCell>
+                    <TableCell className="text-green-400">{proposalDetails.estimatedYield}</TableCell>
+                  </TableRow>
+                   <TableRow>
+                    <TableCell className="font-semibold">Reasoning</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{proposalDetails.reasoning}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-semibold">Estimated Gas Fee</TableCell>
+                    <TableCell>{proposalDetails.estimatedGasFee}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setProposalDetails(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleApproveTransaction}>Approve & Execute</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
     </div>
   );
 }
