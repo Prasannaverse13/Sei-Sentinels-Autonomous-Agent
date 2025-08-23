@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import * as React from "react";
-import { AreaChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Area } from "recharts";
-import { Cpu, DatabaseZap, Bot, Palette, Loader, Server, Wallet, BrainCircuit, Banknote, Package, Send, ExternalLink, Play } from "lucide-react";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import { Cpu, DatabaseZap, Bot, Palette, Loader, Server, Wallet, BrainCircuit, Banknote, Package, Send, Play } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { createNftFromPrompt, CreateNftFromPromptOutput } from "@/ai/flows/create-nft-from-prompt";
 import { dataSentinelAgent, DataSentinelAgentOutput } from "@/ai/flows/data-sentinel-agent";
 import { orchestratorAgent } from "@/ai/flows/orchestrator-agent";
-import { defiPaymentsAgent, DefiPaymentsAgentInput } from "@/ai/flows/defi-payments-agent";
+import { defiPaymentsAgent, DefiPaymentsAgentInput, DefiPaymentsAgentOutput } from "@/ai/flows/defi-payments-agent";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { AppLogo, SeiWhale } from "@/components/icons";
 import type { Activity } from "@/lib/types";
@@ -46,6 +46,8 @@ export default function DashboardPage() {
   const [paymentLoading, setPaymentLoading] = React.useState(false);
   const [paymentStatus, setPaymentStatus] = React.useState<string | null>(null);
   const [executingTaskIndex, setExecutingTaskIndex] = React.useState<number | null>(null);
+  const [executionReport, setExecutionReport] = React.useState<string[] | null>(null);
+
 
   const addActivity = (description: string, icon: React.ReactNode, details?: string) => {
     setActivities(prev => [{
@@ -122,6 +124,7 @@ export default function DashboardPage() {
       const result = await dataSentinelAgent({ query: "Get a comprehensive market overview with a focus on SEI and memecoin sentiment" });
       addActivity("Data Sentinel: Analysis complete. Brief updated.", <BrainCircuit className="text-green-400" />);
       setAnalysisResult(result);
+      return result; // Return result for plan execution
     } catch (error) {
       console.error(error);
       toast({
@@ -130,6 +133,7 @@ export default function DashboardPage() {
         description: "Failed to fetch market analysis.",
       });
       addActivity("Data Sentinel: Failed to fetch analysis.", <Server className="text-red-400" />);
+      return null;
     } finally {
       setAnalysisLoading(false);
     }
@@ -147,6 +151,7 @@ export default function DashboardPage() {
     }
     setPlanLoading(true);
     setPlan([]);
+    setExecutionReport(null);
     
     addActivity("Orchestrator: Goal received.", <Cpu className="text-purple-400" />, `Goal: "${investmentGoal}"`);
     
@@ -170,6 +175,7 @@ export default function DashboardPage() {
 
   const handleExecutePlan = async () => {
     setIsExecuting(true);
+    const report: string[] = [];
     addActivity("Orchestrator: Beginning autonomous execution with ElizaOS wallet...", <Cpu className="text-purple-400" />);
     
     for (let i = 0; i < plan.length; i++) {
@@ -180,7 +186,12 @@ export default function DashboardPage() {
 
       if (task.includes("DataSentinel")) {
         addActivity("Orchestrator: Delegating to Data Sentinel...", <Send className="text-purple-400" />);
-        await handleRefreshAnalysis();
+        const analysis = await handleRefreshAnalysis();
+        if (analysis) {
+          report.push(`Task ${i + 1} (Data Sentinel): Success. Fetched market analysis. Summary: "${analysis.summary}"`);
+        } else {
+          report.push(`Task ${i + 1} (Data Sentinel): Failed.`);
+        }
       } else if (task.includes("DeFiPaymentsAgent")) {
         const actionMatch = task.match(/action: (\w+)/);
         const detailsMatch = task.match(/details: "([^"]+)"/);
@@ -188,12 +199,19 @@ export default function DashboardPage() {
           const action = actionMatch[1] as DefiPaymentsAgentInput['action'];
           const details = detailsMatch[1];
           addActivity(`Orchestrator: Delegating to DeFi Agent...`, <Send className="text-purple-400" />);
-          await handleDeFiAction(action, details, true);
+          const defiResult = await handleDeFiAction(action, details, true);
+          if (defiResult) {
+            report.push(`Task ${i + 1} (DeFi Agent): Success. Action: ${action}. Tx: ${defiResult.transactionId.substring(0,12)}...`);
+          } else {
+            report.push(`Task ${i + 1} (DeFi Agent): Failed.`);
+          }
         }
       } else if (task.includes("ConsumerAgent")) {
         addActivity(`Orchestrator: Delegating to Consumer Agent...`, <Send className="text-purple-400" />);
         await new Promise(resolve => setTimeout(resolve, 1000));
-        addActivity("Consumer Agent: Notified user of plan completion.", <Bot className="text-green-400" />, "Status: Plan execution complete");
+        const notification = "Notified user of plan completion.";
+        addActivity(`Consumer Agent: ${notification}`, <Bot className="text-green-400" />, "Status: Plan execution complete");
+        report.push(`Task ${i + 1} (Consumer Agent): Success. ${notification}`);
       }
     }
     
@@ -202,6 +220,7 @@ export default function DashboardPage() {
     addActivity("Orchestrator: Plan execution complete. State updated on Sei via MCP.", <BrainCircuit className="text-green-400" />);
     setIsExecuting(false);
     setPlan([]); // Clear plan after execution
+    setExecutionReport(report);
   };
 
 
@@ -247,7 +266,7 @@ export default function DashboardPage() {
     }
   };
 
-  const handleDeFiAction = async (action: DefiPaymentsAgentInput['action'], details: string, isFromPlan = false) => {
+  const handleDeFiAction = async (action: DefiPaymentsAgentInput['action'], details: string, isFromPlan = false): Promise<DefiPaymentsAgentOutput | null> => {
     setPaymentLoading(true);
     setPaymentStatus(null);
     if (!isFromPlan) {
@@ -273,6 +292,7 @@ export default function DashboardPage() {
       
       setPaymentStatus(result.status);
       addActivity(`DeFi Agent: Action successful.`, <Banknote className="text-green-400" />, `Tx: ${result.transactionId.substring(0,12)}...`);
+      return result;
     } catch (error) {
       console.error(error);
       toast({
@@ -281,6 +301,7 @@ export default function DashboardPage() {
         description: "Could not complete the transaction.",
       });
       addActivity("DeFi Agent: Action failed.", <Server className="text-red-400" />);
+      return null;
     } finally {
       setPaymentLoading(false);
     }
@@ -379,7 +400,7 @@ export default function DashboardPage() {
                       <Skeleton className="w-full h-10" />
                       <Skeleton className="w-full h-10" />
                    </div>
-                  ) : plan.length > 0 && (
+                  ) : plan.length > 0 ? (
                     <div>
                       <h4 className="mb-2 text-sm font-semibold">Generated Plan:</h4>
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -391,7 +412,16 @@ export default function DashboardPage() {
                         ))}
                       </div>
                     </div>
-                  )}
+                  ) : executionReport ? (
+                     <div>
+                      <h4 className="mb-2 text-sm font-semibold">Execution Summary Report:</h4>
+                      <div className="p-3 space-y-2 text-sm rounded-md bg-muted/50 font-code">
+                        {executionReport.map((report, index) => (
+                          <p key={index} className={report.includes("Success") ? 'text-green-400' : 'text-red-400'}>{report}</p>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null }
               </CardContent>
               <CardFooter className="flex-col items-start gap-4">
                 <Button onClick={handleGeneratePlan} disabled={planLoading || isExecuting || !walletAddress}>
@@ -438,11 +468,11 @@ export default function DashboardPage() {
               <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Button onClick={() => handleDeFiAction('propose_trade', 'Swap 20% of USDC for SEI')} disabled={!walletAddress || paymentLoading || isExecuting}>
-                    {paymentLoading && <Loader className="w-4 h-4 mr-2 animate-spin" />}
+                    {paymentLoading && !isExecuting && <Loader className="w-4 h-4 mr-2 animate-spin" />}
                     <Banknote />Propose Transaction
                   </Button>
                   <Button onClick={() => handleDeFiAction('execute_payment', 'Pay 0.5 SEI to DataSentinel for services')} disabled={!walletAddress || paymentLoading || isExecuting}>
-                    {paymentLoading && <Loader className="w-4 h-4 mr-2 animate-spin" />}
+                    {paymentLoading && !isExecuting && <Loader className="w-4 h-4 mr-2 animate-spin" />}
                     <Send />Execute A2A Payment
                   </Button>
                 </div>
@@ -597,5 +627,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
