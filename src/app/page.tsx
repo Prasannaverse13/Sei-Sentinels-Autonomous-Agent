@@ -18,25 +18,6 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { AppLogo, SeiWhale } from "@/components/icons";
 import type { Activity } from "@/lib/types";
 
-
-const initialPortfolioData = [
-  { month: "Jan", value: 0 },
-  { month: "Feb", value: 0 },
-  { month: "Mar", value: 0 },
-  { month: "Apr", value: 0 },
-  { month: "May", value: 0 },
-  { month: "Jun", value: 0 },
-];
-
-const connectedPortfolioData = [
-  { month: "Jan", value: 4000 },
-  { month: "Feb", value: 3000 },
-  { month: "Mar", value: 5000 },
-  { month: "Apr", value: 4500 },
-  { month: "May", value: 6000 },
-  { month: "Jun", value: 7500 },
-];
-
 const chartConfig = {
   value: {
     label: "Value",
@@ -56,7 +37,7 @@ export default function DashboardPage() {
   const [nftResult, setNftResult] = React.useState<{ nftDataUri: string; listingStatus: string } | null>(null);
   const [nftLoading, setNftLoading] = React.useState(false);
   const [walletAddress, setWalletAddress] = React.useState<string | null>(null);
-  const [portfolioData, setPortfolioData] = React.useState(initialPortfolioData);
+  const [portfolioData, setPortfolioData] = React.useState([]);
   const [isConnecting, setIsConnecting] = React.useState(false);
 
   const addActivity = (description: string, icon: React.ReactNode) => {
@@ -83,7 +64,8 @@ export default function DashboardPage() {
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       const address = accounts[0];
       setWalletAddress(address);
-      setPortfolioData(connectedPortfolioData);
+      // TODO: Fetch real portfolio data here
+      setPortfolioData([]); 
       toast({
         title: "Wallet Connected",
         description: `Connected to address: ${address.substring(0, 6)}...${address.substring(address.length - 4)}`,
@@ -411,4 +393,3 @@ export default function DashboardPage() {
       </main>
     </div>
   );
-}
