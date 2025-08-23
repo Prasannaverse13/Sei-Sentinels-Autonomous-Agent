@@ -52,9 +52,9 @@ const dataSentinelAgentFlow = ai.defineFlow(
     
     // 4. Provide reference links (simulated).
     const references = [
-      { title: "CryptoAnalyst Pro: SEI v2 Upgrade Confirmed", url: "#" },
-      { title: "WhaleAlert: Large SEI transaction detected", url: "#" },
-      { title: "GitHub Pulse: Sei Core Protocol Commits", url: "#" },
+      { title: "CryptoAnalyst Pro: SEI v2 Upgrade Confirmed", url: "https://example.com/news/sei-v2-upgrade-confirmed" },
+      { title: "WhaleAlert: Large SEI transaction detected", url: "https://example.com/alerts/large-sei-transaction-detected" },
+      { title: "GitHub Pulse: Sei Core Protocol Commits", url: "https://example.com/github-pulse/sei-core-commits" },
     ];
     
     // 5. Store the data hash on a Sei native contract (simulated).
