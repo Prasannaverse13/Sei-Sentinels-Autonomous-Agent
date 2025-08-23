@@ -28,6 +28,26 @@ export async function dataSentinelAgent(input: DataSentinelAgentInput): Promise<
   return dataSentinelAgentFlow(input);
 }
 
+const analysisPrompt = ai.definePrompt({
+  name: 'dataSentinelAnalysisPrompt',
+  input: { schema: DataSentinelAgentInputSchema },
+  output: { schema: DataSentinelAgentOutputSchema },
+  prompt: `You are the Data Sentinel, an expert market analyst for the Sei network.
+  
+  Your task is to provide a detailed, realistic, and actionable intelligence brief based on the user's query.
+  
+  Generate a:
+  1.  **Summary**: A high-level overview of the current market sentiment.
+  2.  **On-Chain Analysis**: Specific, believable on-chain data points. Mention whale wallets, NFT floor prices, and token inflows for popular Sei assets. Be creative and specific (e.g., mention wallet addresses like '0x123...abc', NFT collections like 'Sei-gulls', and memecoins like 'SEIYAN').
+  3.  **Off-Chain Analysis**: Believable off-chain data points. Mention social media sentiment, developer activity on GitHub, and news about network upgrades or partnerships.
+  
+  The user's query is: "{{query}}"
+  
+  For the 'onchainLog' and 'offchainLog' fields in the output, just return the simulated log messages as provided below.
+  `,
+});
+
+
 const dataSentinelAgentFlow = ai.defineFlow(
   {
     name: 'dataSentinelAgentFlow',
@@ -41,20 +61,22 @@ const dataSentinelAgentFlow = ai.defineFlow(
     // 2. Fetch on-chain data via custom Sei MCP Server (simulated).
     const onchainLog = "Queried custom Sei MCP Server for whale wallet accumulation, NFT collection floor price changes, and memecoin inflows.";
     
-    // 3. Analyze and synthesize the data.
-    const summary = "Overall market sentiment is cautiously optimistic, driven by high developer activity and news of a v2 upgrade next month. On-chain, whale wallets are showing net accumulation, NFT floors are stable, and memecoin interest is rising.";
-    const offchainAnalysis = "Off-chain sentiment from social platforms shows a 15% increase in positive mentions for SEI over the last 7 days. Developer activity on GitHub remains robust, with three major repositories showing consistent commits. A confirmed v2 network upgrade is scheduled for next month, which is driving speculative interest.";
-    const onchainAnalysis = "On-chain data confirms the positive sentiment. Whale wallet '0x123...abc' has accumulated over 500,000 SEI in the past 48 hours. Floor prices for the top 5 Sei NFT collections have remained stable with a slight uptick in volume. Memecoin 'SEIYAN' has seen a 30% increase in token inflows, indicating heightened retail interest.";
+    // 3. Analyze and synthesize the data using the AI prompt.
+    const { output } = await analysisPrompt(input);
     
+    if (!output) {
+      throw new Error("Failed to generate analysis from the AI model.");
+    }
+
     // 4. Store the data hash on a Sei native contract (simulated).
     // This creates a verifiable, onchain data layer.
 
     return { 
-      summary,
-      onchainAnalysis,
-      offchainAnalysis,
-      onchainLog,
-      offchainLog,
+      summary: output.summary,
+      onchainAnalysis: output.onchainAnalysis,
+      offchainAnalysis: output.offchainAnalysis,
+      onchainLog: onchainLog,
+      offchainLog: offchainLog,
     };
   }
 );
