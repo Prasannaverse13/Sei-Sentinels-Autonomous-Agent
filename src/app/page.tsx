@@ -86,17 +86,13 @@ export default function DashboardPage() {
       addActivity("Wallet connected successfully.", <Wallet className="text-green-400" />, `Address: ${address.substring(0, 6)}...`);
       
       addActivity("Fetching portfolio data...", <DatabaseZap className="text-blue-400" />);
+      // ** LIVE DATA INTEGRATION POINT **
+      // Replace this with a call to a live data service (e.g., Zapper, DeBank, or direct node RPC)
+      // to fetch the user's actual token balances and historical values.
+      // For now, we will clear the portfolio data to indicate a live connection is needed.
       await new Promise(resolve => setTimeout(resolve, 1000));
-      const connectedPortfolioData = [
-        { month: "January", value: 18600 },
-        { month: "February", value: 30500 },
-        { month: "March", value: 23700 },
-        { month: "April", value: 27800 },
-        { month: "May", value: 20000 },
-        { month: "June", value: 24900 },
-      ];
-      setPortfolioData(connectedPortfolioData);
-      addActivity("Portfolio data loaded.", <DatabaseZap className="text-green-400" />);
+      setPortfolioData([]);
+      addActivity("Portfolio data source connected. Ready for live data.", <DatabaseZap className="text-green-400" />);
       
       toast({
         title: "Wallet Connected",
@@ -699,7 +695,7 @@ export default function DashboardPage() {
                   ) : (
                     <div className="flex flex-col items-center justify-center w-full h-full pt-8 text-center">
                       <Wallet className="w-12 h-12 mb-4 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">Connect wallet to view portfolio</p>
+                      <p className="text-sm text-muted-foreground">{ walletAddress ? 'No portfolio data found. Make a deposit to get started.' : 'Connect wallet to view portfolio'}</p>
                     </div>
                   )}
                 </div>
