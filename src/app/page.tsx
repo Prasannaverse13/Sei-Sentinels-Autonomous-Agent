@@ -4,6 +4,8 @@ import Image from "next/image";
 import * as React from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { Cpu, DatabaseZap, Bot, Palette, Loader, Server, Wallet, BrainCircuit, Banknote, Package, Send, Play, CheckCircle2 } from "lucide-react";
+import { useAccount, useConnect, useDisconnect, useBalance } from 'wagmi';
+import { injected } from 'wagmi/connectors';
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,25 +28,25 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 const chartConfig = {
   value: {
-    label: "Value",
+    label: "SEI",
     color: "hsl(var(--accent))",
   },
 };
 
-const samplePortfolioData = [
-  { month: "Jan", value: 18600 },
-  { month: "Feb", value: 30500 },
-  { month: "Mar", value: 23700 },
-  { month: "Apr", value: 27800 },
-  { month: "May", value: 20900 },
-  { month: "Jun", value: 23900 },
-];
-
+type PortfolioDataPoint = {
+  asset: string;
+  value: number;
+}
 
 type DeFiActionPhase = "idle" | "analyzing" | "simulating" | "proposal_ready" | "executing";
 
 export default function DashboardPage() {
   const { toast } = useToast();
+  const { address, isConnected, isConnecting } = useAccount();
+  const { connect } = useConnect();
+  const { disconnect } = useDisconnect();
+  const { data: balance, isLoading: isBalanceLoading } = useBalance({ address });
+
   const [activities, setActivities] = React.useState<Activity[]>([]);
   const [analysisResult, setAnalysisResult] = React.useState<DataSentinelAgentOutput | null>(null);
   const [analysisLoading, setAnalysisLoading] = React.useState(false);
@@ -55,9 +57,7 @@ export default function DashboardPage() {
   const [nftPrompt, setNftPrompt] = React.useState("A cyberpunk whale swimming in a sea of code");
   const [nftResult, setNftResult] = React.useState<CreateNftFromPromptOutput | null>(null);
   const [nftLoading, setNftLoading] = React.useState(false);
-  const [walletAddress, setWalletAddress] = React.useState<string | null>(null);
-  const [portfolioData, setPortfolioData] = React.useState<any[]>([]);
-  const [isConnecting, setIsConnecting] = React.useState(false);
+  const [portfolioData, setPortfolioData] = React.useState<PortfolioDataPoint[]>([]);
   const [paymentLoading, setPaymentLoading] = React.useState(false);
   const [paymentResult, setPaymentResult] = React.useState<DefiPaymentsAgentOutput | null>(null);
   const [executingTaskIndex, setExecutingTaskIndex] = React.useState<number | null>(null);
@@ -76,55 +76,18 @@ export default function DashboardPage() {
     }, ...prev].slice(0, 20));
   };
   
-  const handleConnectWallet = async () => {
-    if (typeof window.ethereum === 'undefined') {
-      toast({
-        variant: "destructive",
-        title: "MetaMask not installed",
-        description: "Please install MetaMask to connect your wallet.",
-      });
-      return;
-    }
-
-    setIsConnecting(true);
-    addActivity("Connecting to Compass Wallet...", <Wallet className="text-blue-400" />);
-    try {
-      // @ts-ignore
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      const address = accounts[0];
-      setWalletAddress(address);
-      addActivity("Wallet connected successfully.", <Wallet className="text-green-400" />, `Address: ${address.substring(0, 6)}...`);
-      
-      addActivity("Fetching portfolio data...", <DatabaseZap className="text-blue-400" />);
-      // ** LIVE DATA INTEGRATION POINT **
-      // In a real application, you would replace this sample data with a call to a live data service
-      // (e.g., Zapper, DeBank, or a direct node RPC) to fetch the user's actual token balances.
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setPortfolioData(samplePortfolioData);
-      addActivity("Portfolio data loaded.", <DatabaseZap className="text-green-400" />);
-      
-      toast({
-        title: "Wallet Connected",
-        description: `Connected to address: ${address.substring(0, 6)}...${address.substring(address.length - 4)}`,
-      });
-      
-      handleRefreshAnalysis();
-
-    } catch (error) {
-      console.error("Failed to connect wallet:", error);
-      toast({
-        variant: "destructive",
-        title: "Connection Failed",
-        description: "User rejected the connection request.",
-      });
-      addActivity("Wallet connection failed.", <Server className="text-red-400" />);
-    } finally {
-      setIsConnecting(false);
+  const handleConnectWallet = () => {
+    if (isConnected) {
+        disconnect();
+        addActivity("Wallet disconnected.", <Wallet className="text-red-400" />);
+    } else {
+        addActivity("Connecting to Compass Wallet...", <Wallet className="text-blue-400" />);
+        connect({ connector: injected() });
     }
   };
 
   const handleRefreshAnalysis = React.useCallback(async () => {
-    if (!walletAddress) {
+    if (!isConnected) {
       setAnalysisResult(null);
       return;
     }
@@ -150,7 +113,7 @@ export default function DashboardPage() {
     } finally {
       setAnalysisLoading(false);
     }
-  }, [walletAddress, toast]);
+  }, [isConnected, toast]);
 
 
   const handleGeneratePlan = async () => {
@@ -358,11 +321,41 @@ export default function DashboardPage() {
   }
 
   React.useEffect(() => {
-    if (walletAddress) {
+    if (isConnected && address) {
+      addActivity("Wallet connected successfully.", <Wallet className="text-green-400" />, `Address: ${address.substring(0, 6)}...`);
       handleRefreshAnalysis();
+
+      // ** LIVE DATA INTEGRATION POINT **
+      const fetchedPortfolio: PortfolioDataPoint[] = [];
+      if (balance) {
+          // Add native SEI balance
+          fetchedPortfolio.push({ asset: 'SEI', value: parseFloat(balance.formatted) });
+      }
+      
+      // ** To fetch ERC-20 tokens, you would integrate a data indexer here. **
+      // Example with a placeholder function:
+      // const erc20Balances = await getErc20Balances(address);
+      // fetchedPortfolio.push(...erc20Balances);
+      
+      // For demonstration, we add some mock ERC-20 data.
+      // In a real app, this would be replaced by the indexer call.
+      fetchedPortfolio.push({ asset: 'USDC', value: 1250.75 });
+      fetchedPortfolio.push({ asset: 'SEIYAN', value: 50.0 * 0.25 }); // Mock price
+      
+      setPortfolioData(fetchedPortfolio);
+      addActivity("Portfolio data loaded.", <DatabaseZap className="text-green-400" />);
+
+      toast({
+          title: "Wallet Connected",
+          description: `Connected to address: ${address.substring(0, 6)}...${address.substring(address.length - 4)}`,
+      });
+
+    } else {
+        setPortfolioData([]);
+        setAnalysisResult(null);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isConnected, address, balance]);
 
   const renderDeFiCardContent = () => {
     if (defiPhase === "analyzing" || defiPhase === "simulating" || defiPhase === "executing") {
@@ -405,15 +398,90 @@ export default function DashboardPage() {
     
     return (
       <div className="grid gap-4 sm:grid-cols-2">
-        <Button onClick={() => handleDeFiAction('propose_trade', 'Propose a trade to capitalize on market conditions')} disabled={!walletAddress || paymentLoading || isExecuting || defiPhase !== 'idle'}>
+        <Button onClick={() => handleDeFiAction('propose_trade', 'Propose a trade to capitalize on market conditions')} disabled={!isConnected || paymentLoading || isExecuting || defiPhase !== 'idle'}>
           {paymentLoading && defiPhase !== 'idle' && <Loader className="w-4 h-4 mr-2 animate-spin" />}
           <BrainCircuit />Propose Transaction
         </Button>
-        <Button onClick={() => handleDeFiAction('execute_payment', 'Pay 0.5 SEI to DataSentinel for services')} disabled={!walletAddress || paymentLoading || isExecuting || defiPhase !== 'idle'}>
+        <Button onClick={() => handleDeFiAction('execute_payment', 'Pay 0.5 SEI to DataSentinel for services')} disabled={!isConnected || paymentLoading || isExecuting || defiPhase !== 'idle'}>
           {paymentLoading && defiPhase !== 'idle' && <Loader className="w-4 h-4 mr-2 animate-spin" />}
           <Send />Execute A2A Payment
         </Button>
       </div>
+    );
+  }
+
+  const renderPortfolioContent = () => {
+    if (isConnecting || (isConnected && isBalanceLoading)) {
+      return (
+        <div className="flex flex-col items-center justify-center w-full h-full pt-8 text-center">
+            <Loader className="w-12 h-12 mb-4 text-muted-foreground animate-spin" />
+            <p className="text-sm text-muted-foreground">Loading portfolio...</p>
+        </div>
+      )
+    }
+    
+    if (!isConnected) {
+       return (
+        <div className="flex flex-col items-center justify-center w-full h-full pt-8 text-center">
+          <Wallet className="w-12 h-12 mb-4 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Connect wallet to view portfolio</p>
+        </div>
+      );
+    }
+    
+    if (portfolioData.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center w-full h-full pt-8 text-center">
+          <Wallet className="w-12 h-12 mb-4 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">No portfolio data found. Make a deposit to get started.</p>
+        </div>
+      )
+    }
+
+    // Chart expects month/value, but we have asset/value. We will adapt.
+    // For this demonstration, we'll chart assets on the X-axis.
+    return (
+      <ChartContainer config={chartConfig} className="w-full min-h-[200px]">
+        <AreaChart
+          accessibilityLayer
+          data={portfolioData}
+          margin={{
+            left: 0,
+            right: 12,
+            top: 5,
+            bottom: 0,
+          }}
+        >
+          <CartesianGrid vertical={false} />
+          <XAxis
+            dataKey="asset"
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+          />
+           <YAxis
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            tickCount={3}
+            tickFormatter={(value) => `$${value}`}
+            domain={[0, 'dataMax + 100']}
+          />
+          <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
+          <defs>
+            <linearGradient id="fillValue" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="var(--color-value)" stopOpacity={0.8} />
+              <stop offset="95%" stopColor="var(--color-value)" stopOpacity={0.1} />
+            </linearGradient>
+          </defs>
+          <Area
+            dataKey="value"
+            type="natural"
+            fill="url(#fillValue)"
+            stroke="var(--color-value)"
+          />
+        </AreaChart>
+      </ChartContainer>
     );
   }
 
@@ -426,13 +494,13 @@ export default function DashboardPage() {
             Sei Sentinels
           </h1>
         </div>
-        <Button variant="outline" className="flex items-center gap-2" onClick={handleConnectWallet} disabled={isConnecting || !!walletAddress}>
+        <Button variant="outline" className="flex items-center gap-2" onClick={handleConnectWallet} disabled={isConnecting}>
           {isConnecting ? (
              <Loader className="w-4 h-4 animate-spin" />
           ) : (
             <Wallet className="w-4 h-4" />
           )}
-          <span>{walletAddress ? `${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}` : "Connect Wallet"}</span>
+          <span>{isConnected && address ? `${address.substring(0, 6)}...${address.substring(address.length - 4)}` : "Connect Wallet"}</span>
         </Button>
       </header>
       <main className="flex-1 p-4 md:p-6 lg:p-8">
@@ -473,7 +541,7 @@ export default function DashboardPage() {
                 )}
               </CardContent>
               <CardFooter>
-                 <Button variant="ghost" size="sm" onClick={() => handleRefreshAnalysis()} disabled={analysisLoading || !walletAddress}>
+                 <Button variant="ghost" size="sm" onClick={() => handleRefreshAnalysis()} disabled={analysisLoading || !isConnected}>
                   {analysisLoading ? <Loader className="w-4 h-4 mr-2 animate-spin" /> : null}
                   Refresh Analysis
                 </Button>
@@ -496,7 +564,7 @@ export default function DashboardPage() {
                   value={investmentGoal}
                   onChange={(e) => setInvestmentGoal(e.target.value)}
                   className="font-code"
-                  disabled={!walletAddress || planLoading || isExecuting}
+                  disabled={!isConnected || planLoading || isExecuting}
                 />
                  {planLoading ? (
                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -527,7 +595,7 @@ export default function DashboardPage() {
                   ) : null }
               </CardContent>
               <CardFooter className="flex-col items-start gap-4">
-                <Button onClick={handleGeneratePlan} disabled={planLoading || isExecuting || !walletAddress}>
+                <Button onClick={handleGeneratePlan} disabled={planLoading || isExecuting || !isConnected}>
                   {planLoading && <Loader className="w-4 h-4 mr-2 animate-spin" />}
                   Generate Plan
                 </Button>
@@ -539,7 +607,7 @@ export default function DashboardPage() {
                         <h4 className="font-semibold">Plan is ready for execution.</h4>
                         <p className="text-sm text-muted-foreground">The Orchestrator will now autonomously execute the generated plan.</p>
                       </div>
-                       <Button onClick={handleExecutePlan} disabled={isExecuting || !walletAddress}>
+                       <Button onClick={handleExecutePlan} disabled={isExecuting || !isConnected}>
                         <Play className="w-4 h-4 mr-2" />
                         Execute Plan Autonomously
                       </Button>
@@ -590,9 +658,9 @@ export default function DashboardPage() {
                       value={nftPrompt}
                       onChange={(e) => setNftPrompt(e.target.value)}
                       className="font-code"
-                      disabled={!walletAddress || nftLoading || isExecuting}
+                      disabled={!isConnected || nftLoading || isExecuting}
                     />
-                     <Button onClick={handleCreateNft} disabled={nftLoading || !walletAddress || isExecuting} className="min-w-fit">
+                     <Button onClick={handleCreateNft} disabled={nftLoading || !isConnected || isExecuting} className="min-w-fit">
                       {nftLoading ? <Loader className="w-4 h-4 animate-spin" /> : "Create NFT"}
                     </Button>
                  </div>
@@ -654,59 +722,12 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle>Portfolio Overview</CardTitle>
                  <CardDescription>
-                  {walletAddress ? `Portfolio data for ${walletAddress.substring(0, 6)}...` : 'Connect wallet to see portfolio'}
+                  {isConnected && address ? `Portfolio data for ${address.substring(0, 6)}...` : 'Connect wallet to see portfolio'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="w-full h-[200px]">
-                  {portfolioData.length > 0 ? (
-                     <ChartContainer config={chartConfig} className="w-full min-h-[200px]">
-                      <AreaChart
-                        accessibilityLayer
-                        data={portfolioData}
-                        margin={{
-                          left: 0,
-                          right: 12,
-                          top: 5,
-                          bottom: 0,
-                        }}
-                      >
-                        <CartesianGrid vertical={false} />
-                        <XAxis
-                          dataKey="month"
-                          tickLine={false}
-                          axisLine={false}
-                          tickMargin={8}
-                          tickFormatter={(value) => value.slice(0, 3)}
-                        />
-                         <YAxis
-                          tickLine={false}
-                          axisLine={false}
-                          tickMargin={8}
-                          tickCount={3}
-                          tickFormatter={(value) => `$${value / 1000}k`}
-                        />
-                        <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
-                        <defs>
-                          <linearGradient id="fillValue" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="var(--color-value)" stopOpacity={0.8} />
-                            <stop offset="95%" stopColor="var(--color-value)" stopOpacity={0.1} />
-                          </linearGradient>
-                        </defs>
-                        <Area
-                          dataKey="value"
-                          type="natural"
-                          fill="url(#fillValue)"
-                          stroke="var(--color-value)"
-                        />
-                      </AreaChart>
-                    </ChartContainer>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center w-full h-full pt-8 text-center">
-                      <Wallet className="w-12 h-12 mb-4 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">{ walletAddress ? 'No portfolio data found. Make a deposit to get started.' : 'Connect wallet to view portfolio'}</p>
-                    </div>
-                  )}
+                 {renderPortfolioContent()}
                 </div>
               </CardContent>
             </Card>
