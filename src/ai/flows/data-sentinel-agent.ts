@@ -19,10 +19,6 @@ const DataSentinelAgentOutputSchema = z.object({
   summary: z.string().describe('A high-level summary of the market analysis.'),
   onchainAnalysis: z.string().describe('Detailed analysis of on-chain data points.'),
   offchainAnalysis: z.string().describe('Detailed analysis of off-chain data points.'),
-  references: z.array(z.object({
-    title: z.string(),
-    url: z.string(),
-  })).describe('A list of reference links for the user.'),
   onchainLog: z.string().describe('A log of the on-chain data fetching process.'),
   offchainLog: z.string().describe('A log of the off-chain data fetching process.'),
 });
@@ -50,21 +46,13 @@ const dataSentinelAgentFlow = ai.defineFlow(
     const offchainAnalysis = "Off-chain sentiment from social platforms shows a 15% increase in positive mentions for SEI over the last 7 days. Developer activity on GitHub remains robust, with three major repositories showing consistent commits. A confirmed v2 network upgrade is scheduled for next month, which is driving speculative interest.";
     const onchainAnalysis = "On-chain data confirms the positive sentiment. Whale wallet '0x123...abc' has accumulated over 500,000 SEI in the past 48 hours. Floor prices for the top 5 Sei NFT collections have remained stable with a slight uptick in volume. Memecoin 'SEIYAN' has seen a 30% increase in token inflows, indicating heightened retail interest.";
     
-    // 4. Provide reference links (simulated).
-    const references = [
-      { title: "CryptoAnalyst Pro: SEI v2 Upgrade Confirmed", url: "https://example.com/news/sei-v2-upgrade-confirmed" },
-      { title: "WhaleAlert: Large SEI transaction detected", url: "https://example.com/alerts/large-sei-transaction-detected" },
-      { title: "GitHub Pulse: Sei Core Protocol Commits", url: "https://example.com/github-pulse/sei-core-commits" },
-    ];
-    
-    // 5. Store the data hash on a Sei native contract (simulated).
+    // 4. Store the data hash on a Sei native contract (simulated).
     // This creates a verifiable, onchain data layer.
 
     return { 
       summary,
       onchainAnalysis,
       offchainAnalysis,
-      references,
       onchainLog,
       offchainLog,
     };

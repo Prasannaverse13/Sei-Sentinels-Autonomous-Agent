@@ -28,18 +28,6 @@ const chartConfig = {
   },
 };
 
-const connectedPortfolioData = [
-  { month: "Jan", value: 1860 },
-  { month: "Feb", value: 3050 },
-  { month: "Mar", value: 2370 },
-  { month: "Apr", value: 2730 },
-  { month: "May", value: 2090 },
-  { month: "Jun", value: 4120 },
-  { month: "Jul", value: 4500 },
-  { month: "Aug", value: 4890 },
-  { month: "Sep", value: 5120 },
-];
-
 export default function DashboardPage() {
   const { toast } = useToast();
   const [activities, setActivities] = React.useState<Activity[]>([]);
@@ -86,7 +74,7 @@ export default function DashboardPage() {
       
       addActivity("Fetching portfolio data...", <DatabaseZap className="text-blue-400" />);
       await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
-      setPortfolioData(connectedPortfolioData);
+      // setPortfolioData([]);
       addActivity("Portfolio data loaded.", <DatabaseZap className="text-green-400" />);
       
       toast({
@@ -121,10 +109,10 @@ export default function DashboardPage() {
     try {
       const result = await dataSentinelAgent({ query: "Get a comprehensive market overview with a focus on SEI and memecoin sentiment" });
       
-      addActivity("Data Sentinel: Fetching off-chain data...", <DatabaseZap className="text-blue-400" />, result.offchainLog);
+      addActivity("Data Sentinel: Fetching off-chain data from Rivalz Oracles...", <DatabaseZap className="text-blue-400" />, result.offchainLog);
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      addActivity("Data Sentinel: Fetching on-chain data...", <DatabaseZap className="text-blue-400" />, result.onchainLog);
+      addActivity("Data Sentinel: Fetching on-chain data via custom MCP Server...", <DatabaseZap className="text-blue-400" />, result.onchainLog);
       await new Promise(resolve => setTimeout(resolve, 1500)); 
       
       addActivity("Data Sentinel: Synthesizing data...", <BrainCircuit className="text-blue-400" />);
@@ -166,7 +154,7 @@ export default function DashboardPage() {
       setStrategies(result.plan);
       
       await new Promise(resolve => setTimeout(resolve, 1000));
-      addActivity("Orchestrator: Beginning autonomous execution...", <Cpu className="text-purple-400" />);
+      addActivity("Orchestrator: Beginning autonomous execution with ElizaOS wallet...", <Cpu className="text-purple-400" />);
       
       for (const task of result.plan) {
          await new Promise(resolve => setTimeout(resolve, 1500));
@@ -215,7 +203,7 @@ export default function DashboardPage() {
       setNftResult(result);
       addActivity("Creative Agent: NFT created and listed.", <Palette className="text-green-400" />, result.listingStatus);
       
-      addActivity("Creative Agent: Notifying user...", <Send className="text-yellow-400" />, result.notificationStatus);
+      addActivity("Creative Agent: Notifying user via AIDN...", <Send className="text-yellow-400" />, result.notificationStatus);
 
     } catch (error) {
       console.error(error);
@@ -244,7 +232,7 @@ export default function DashboardPage() {
         result = await defiPaymentsAgent({ action, details, dataAnalysis: analysisResult?.summary });
         addActivity(`DeFi Agent: Analysis complete.`, <BrainCircuit className="text-green-400" />, result.hiveLog);
       } else {
-        addActivity(`DeFi Agent: Initiating A2A payment...`, <Banknote className="text-blue-400" />);
+        addActivity(`DeFi Agent: Initiating A2A payment via Crossmint GOAT SDK...`, <Banknote className="text-blue-400" />);
         result = await defiPaymentsAgent({ action, details });
       }
 
@@ -322,19 +310,6 @@ export default function DashboardPage() {
                      <div className="space-y-2">
                       <h4 className="font-semibold">Off-Chain Analysis</h4>
                       <p className="text-muted-foreground font-code">{analysisResult.offchainAnalysis}</p>
-                    </div>
-                    <div className="space-y-2">
-                       <h4 className="font-semibold">References</h4>
-                       <ul className="space-y-1 list-disc list-inside">
-                        {analysisResult.references.map((ref, i) => (
-                           <li key={i}>
-                             <a href={ref.url} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-accent hover:underline">
-                               {ref.title}
-                               <ExternalLink className="w-3 h-3" />
-                             </a>
-                           </li>
-                         ))}
-                       </ul>
                     </div>
                   </div>
                 ) : (
