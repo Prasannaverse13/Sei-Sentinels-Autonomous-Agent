@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import * as React from "react";
-import { AreaChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import { AreaChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Area } from "recharts";
 import { Cpu, DatabaseZap, Bot, Palette, Loader, Server, Wallet, BrainCircuit, Banknote, Package, Send } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -155,7 +155,7 @@ export default function DashboardPage() {
     addActivity("Orchestrator: Goal received - 'Generate investment plan'.", <Cpu className="text-purple-400" />);
     
     try {
-      const result = await orchestratorAgent({ investmentGoal });
+      const result = await orchestratorAgent({ goal: investmentGoal });
       addActivity("Orchestrator: Plan generated.", <BrainCircuit className="text-green-400" />, result.executionLog);
       setStrategies(result.plan);
       
