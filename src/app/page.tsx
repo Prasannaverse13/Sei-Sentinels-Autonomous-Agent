@@ -3,7 +3,7 @@
 import Image from "next/image";
 import * as React from "react";
 import { AreaChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Area } from "recharts";
-import { Cpu, DatabaseZap, Bot, Palette, Loader, Server, Wallet, BrainCircuit, Banknote, Package, Send, ExternalLink } from "lucide-react";
+import { Cpu, DatabaseZap, Bot, Palette, Loader, Server, Wallet, BrainCircuit, Banknote, Package, Send, ExternalLink, Play } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,8 +34,9 @@ export default function DashboardPage() {
   const [analysisResult, setAnalysisResult] = React.useState<DataSentinelAgentOutput | null>(null);
   const [analysisLoading, setAnalysisLoading] = React.useState(false);
   const [investmentGoal, setInvestmentGoal] = React.useState("Maximize my DeFi portfolio yield with a focus on stablecoins and blue-chip assets.");
-  const [strategies, setStrategies] = React.useState<string[]>([]);
-  const [strategyLoading, setStrategyLoading] = React.useState(false);
+  const [plan, setPlan] = React.useState<string[]>([]);
+  const [planLoading, setPlanLoading] = React.useState(false);
+  const [isExecuting, setIsExecuting] = React.useState(false);
   const [nftPrompt, setNftPrompt] = React.useState("A cyberpunk whale swimming in a sea of code");
   const [nftResult, setNftResult] = React.useState<CreateNftFromPromptOutput | null>(null);
   const [nftLoading, setNftLoading] = React.useState(false);
@@ -51,7 +52,7 @@ export default function DashboardPage() {
       icon,
       details,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }, ...prev].slice(0, 20)); // Increased limit to show more activities
+    }, ...prev].slice(0, 20));
   };
   
   const handleConnectWallet = async () => {
@@ -74,7 +75,7 @@ export default function DashboardPage() {
       addActivity("Wallet connected successfully.", <Wallet className="text-green-400" />, `Address: ${address.substring(0, 6)}...`);
       
       addActivity("Fetching portfolio data...", <DatabaseZap className="text-blue-400" />);
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
       const connectedPortfolioData = [
         { month: "January", value: 18600 },
         { month: "February", value: 30500 },
@@ -134,7 +135,7 @@ export default function DashboardPage() {
   }, [walletAddress, toast]);
 
 
-  const handleGenerateStrategies = async () => {
+  const handleGeneratePlan = async () => {
     if (!investmentGoal) {
       toast({
         variant: "destructive",
@@ -143,57 +144,61 @@ export default function DashboardPage() {
       });
       return;
     }
-    setStrategyLoading(true);
-    setStrategies([]);
+    setPlanLoading(true);
+    setPlan([]);
     
     addActivity("Orchestrator: Goal received.", <Cpu className="text-purple-400" />, `Goal: "${investmentGoal}"`);
     
     try {
       const result = await orchestratorAgent({ goal: investmentGoal });
       addActivity("Orchestrator: Plan generated with Cambrian Agent Kit.", <BrainCircuit className="text-green-400" />, result.executionLog);
-      setStrategies(result.plan);
-      
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      addActivity("Orchestrator: Beginning autonomous execution with ElizaOS wallet...", <Cpu className="text-purple-400" />);
-      
-      // Full execution loop
-      for (const task of result.plan) {
-         await new Promise(resolve => setTimeout(resolve, 1500));
-         addActivity(`Orchestrator: Executing task...`, <Send className="text-purple-400" />, task);
-
-         if (task.includes("DataSentinel")) {
-           addActivity("Orchestrator: Delegating to Data Sentinel...", <Send className="text-purple-400" />);
-           await handleRefreshAnalysis();
-         } else if (task.includes("DeFiPaymentsAgent")) {
-           const actionMatch = task.match(/action: (\w+)/);
-           const detailsMatch = task.match(/details: "([^"]+)"/);
-           if(actionMatch && detailsMatch) {
-             const action = actionMatch[1] as DefiPaymentsAgentInput['action'];
-             const details = detailsMatch[1];
-             addActivity(`Orchestrator: Delegating to DeFi Agent...`, <Send className="text-purple-400" />);
-             await handleDeFiAction(action, details, true);
-           }
-         } else if (task.includes("ConsumerAgent")) {
-            addActivity(`Orchestrator: Delegating to Consumer Agent...`, <Send className="text-purple-400" />);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            addActivity("Consumer Agent: Notified user of plan completion.", <Bot className="text-green-400" />, "Status: Plan execution complete");
-         }
-      }
-       await new Promise(resolve => setTimeout(resolve, 1000));
-       addActivity("Orchestrator: Plan execution complete. State updated on Sei via MCP.", <BrainCircuit className="text-green-400" />);
+      setPlan(result.plan);
 
     } catch (error) {
       console.error(error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to generate or execute plan.",
+        description: "Failed to generate plan.",
       });
-      addActivity("Orchestrator: Failed to execute plan.", <Server className="text-red-400" />);
+      addActivity("Orchestrator: Failed to generate plan.", <Server className="text-red-400" />);
     } finally {
-      setStrategyLoading(false);
+      setPlanLoading(false);
     }
   };
+
+  const handleExecutePlan = async () => {
+    setIsExecuting(true);
+    addActivity("Orchestrator: Beginning autonomous execution with ElizaOS wallet...", <Cpu className="text-purple-400" />);
+    
+    for (const task of plan) {
+       await new Promise(resolve => setTimeout(resolve, 1500));
+       addActivity(`Orchestrator: Executing task...`, <Send className="text-purple-400" />, task);
+
+       if (task.includes("DataSentinel")) {
+         addActivity("Orchestrator: Delegating to Data Sentinel...", <Send className="text-purple-400" />);
+         await handleRefreshAnalysis();
+       } else if (task.includes("DeFiPaymentsAgent")) {
+         const actionMatch = task.match(/action: (\w+)/);
+         const detailsMatch = task.match(/details: "([^"]+)"/);
+         if(actionMatch && detailsMatch) {
+           const action = actionMatch[1] as DefiPaymentsAgentInput['action'];
+           const details = detailsMatch[1];
+           addActivity(`Orchestrator: Delegating to DeFi Agent...`, <Send className="text-purple-400" />);
+           await handleDeFiAction(action, details, true);
+         }
+       } else if (task.includes("ConsumerAgent")) {
+          addActivity(`Orchestrator: Delegating to Consumer Agent...`, <Send className="text-purple-400" />);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          addActivity("Consumer Agent: Notified user of plan completion.", <Bot className="text-green-400" />, "Status: Plan execution complete");
+       }
+    }
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    addActivity("Orchestrator: Plan execution complete. State updated on Sei via MCP.", <BrainCircuit className="text-green-400" />);
+    setIsExecuting(false);
+    setPlan([]); // Clear plan after execution
+  };
+
 
   const handleCreateNft = async () => {
     if (!nftPrompt) {
@@ -362,18 +367,18 @@ export default function DashboardPage() {
                   value={investmentGoal}
                   onChange={(e) => setInvestmentGoal(e.target.value)}
                   className="font-code"
-                  disabled={!walletAddress}
+                  disabled={!walletAddress || planLoading || isExecuting}
                 />
-                 {strategyLoading ? (
+                 {planLoading ? (
                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       <Skeleton className="w-full h-10" />
                       <Skeleton className="w-full h-10" />
                    </div>
-                  ) : strategies.length > 0 && (
+                  ) : plan.length > 0 && (
                     <div>
                       <h4 className="mb-2 text-sm font-semibold">Generated Plan:</h4>
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        {strategies.map((strategy, index) => (
+                        {plan.map((strategy, index) => (
                           <div key={index} className="p-3 text-sm rounded-md bg-muted/50 font-code">
                             {strategy}
                           </div>
@@ -382,11 +387,35 @@ export default function DashboardPage() {
                     </div>
                   )}
               </CardContent>
-              <CardFooter>
-                <Button onClick={handleGenerateStrategies} disabled={strategyLoading || !walletAddress}>
-                  {strategyLoading && <Loader className="w-4 h-4 mr-2 animate-spin" />}
-                  Generate & Execute Plan
+              <CardFooter className="flex-col items-start gap-4">
+                <Button onClick={handleGeneratePlan} disabled={planLoading || isExecuting || !walletAddress}>
+                  {planLoading && <Loader className="w-4 h-4 mr-2 animate-spin" />}
+                  Generate Plan
                 </Button>
+
+                {plan.length > 0 && !isExecuting && (
+                  <Card className="w-full p-4 border-dashed bg-card/50">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-semibold">Plan is ready for execution.</h4>
+                        <p className="text-sm text-muted-foreground">The Orchestrator will now autonomously execute the generated plan.</p>
+                      </div>
+                       <Button onClick={handleExecutePlan} disabled={isExecuting || !walletAddress}>
+                        <Play className="w-4 h-4 mr-2" />
+                        Execute Plan Autonomously
+                      </Button>
+                    </div>
+                  </Card>
+                )}
+                 {isExecuting && (
+                   <div className="flex items-center w-full p-4 rounded-md bg-muted/50">
+                     <Loader className="w-5 h-5 mr-3 animate-spin text-accent" />
+                      <div>
+                        <h4 className="font-semibold">Executing Plan...</h4>
+                        <p className="text-sm text-muted-foreground">Monitoring agent activity feed for progress.</p>
+                      </div>
+                   </div>
+                 )}
               </CardFooter>
             </Card>
 
@@ -402,11 +431,11 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Button onClick={() => handleDeFiAction('propose_trade', 'Swap 20% of USDC for SEI')} disabled={!walletAddress || paymentLoading}>
+                  <Button onClick={() => handleDeFiAction('propose_trade', 'Swap 20% of USDC for SEI')} disabled={!walletAddress || paymentLoading || isExecuting}>
                     {paymentLoading && <Loader className="w-4 h-4 mr-2 animate-spin" />}
                     <Banknote />Propose Transaction
                   </Button>
-                  <Button onClick={() => handleDeFiAction('execute_payment', 'Pay 0.5 SEI to DataSentinel for services')} disabled={!walletAddress || paymentLoading}>
+                  <Button onClick={() => handleDeFiAction('execute_payment', 'Pay 0.5 SEI to DataSentinel for services')} disabled={!walletAddress || paymentLoading || isExecuting}>
                     {paymentLoading && <Loader className="w-4 h-4 mr-2 animate-spin" />}
                     <Send />Execute A2A Payment
                   </Button>
@@ -436,9 +465,9 @@ export default function DashboardPage() {
                       value={nftPrompt}
                       onChange={(e) => setNftPrompt(e.target.value)}
                       className="font-code"
-                      disabled={!walletAddress}
+                      disabled={!walletAddress || nftLoading || isExecuting}
                     />
-                     <Button onClick={handleCreateNft} disabled={nftLoading || !walletAddress} className="min-w-fit">
+                     <Button onClick={handleCreateNft} disabled={nftLoading || !walletAddress || isExecuting} className="min-w-fit">
                       {nftLoading ? <Loader className="w-4 h-4 animate-spin" /> : "Create NFT"}
                     </Button>
                  </div>
@@ -562,5 +591,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
