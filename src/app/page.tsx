@@ -245,7 +245,7 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <DatabaseZap className="w-6 h-6 text-primary" />
-                  Market Sentiment
+                  Data Sentinel
                 </CardTitle>
                 <CardDescription>
                   Data Sentinel&apos;s real-time analysis of onchain and offchain data.
@@ -318,7 +318,7 @@ export default function DashboardPage() {
                   DeFi & Payments Agent
                 </CardTitle>
                 <CardDescription>
-                  Manage portfolio and facilitate payments using the Crossmint GOAT SDK.
+                  Autonomous portfolio management and payments using the Crossmint GOAT SDK.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -344,7 +344,7 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Palette className="w-6 h-6 text-primary" />
-                  Creative Agent
+                  Creative Agent / Art Broker
                 </CardTitle>
                 <CardDescription>
                   Generate and list a unique NFT on a Sei marketplace based on your prompt.
