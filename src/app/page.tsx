@@ -26,6 +26,7 @@ import { Separator } from "@/components/ui/separator";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 
 const chartConfig = {
@@ -124,14 +125,15 @@ export default function DashboardPage() {
   };
   
   const handleConnectWallet = () => {
-    if (isConnected) {
-        disconnect();
-        addActivity("Wallet disconnected.", <Wallet className="text-red-400" />);
-    } else {
-        addActivity("Connecting to Wallet...", <Wallet className="text-blue-400" />);
-        connect({ connector: injected() });
-    }
+    addActivity("Connecting to Wallet...", <Wallet className="text-blue-400" />);
+    connect({ connector: injected() });
   };
+  
+  const handleDisconnectWallet = () => {
+      disconnect();
+      addActivity("Wallet disconnected.", <Wallet className="text-red-400" />);
+  };
+
 
   const handleRefreshAnalysis = React.useCallback(async () => {
     if (!isConnected) {
@@ -487,19 +489,37 @@ export default function DashboardPage() {
       return <Skeleton className="w-36 h-9" />;
     }
     
+    if (!isConnected) {
+        return (
+            <Button variant="outline" className="flex items-center gap-2" onClick={handleConnectWallet} disabled={isConnecting}>
+              {isConnecting ? (
+                 <Loader className="w-4 h-4 animate-spin" />
+              ) : (
+                <Wallet className="w-4 h-4" />
+              )}
+              <span>Connect Wallet</span>
+            </Button>
+        );
+    }
+    
     return (
-        <Button variant="outline" className="flex items-center gap-2" onClick={handleConnectWallet} disabled={isClient && isConnecting}>
-          {isConnecting ? (
-             <Loader className="w-4 h-4 animate-spin" />
-          ) : (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" className="flex items-center gap-2">
             <Wallet className="w-4 h-4" />
-          )}
-          <span>{isConnected && address ? `${address.substring(0, 6)}...${address.substring(address.length - 4)}` : "Connect Wallet"}</span>
-           {isConnected && chain && (
+            <span>{address ? `${address.substring(0, 6)}...${address.substring(address.length - 4)}` : ''}</span>
+            {chain && (
               <Badge variant="secondary" className="ml-2">{chain.name}</Badge>
-           )}
-        </Button>
-    )
+            )}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={handleDisconnectWallet}>
+            Disconnect
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
   }
 
   return (
@@ -747,5 +767,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
