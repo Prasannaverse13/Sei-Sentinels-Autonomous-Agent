@@ -2,6 +2,13 @@
 
 Sei Sentinels is a sophisticated, AI-powered multi-agent network built on the Sei blockchain. It provides a suite of autonomous agents that can perform complex tasks, including on-chain data analysis, financial strategy execution, and creative asset generation. The platform showcases a future where users can delegate high-level goals to a network of sovereign agents that work continuously and transparently on their behalf.
 
+<img width="1920" height="1080" alt="Screenshot (1306)" src="https://github.com/user-attachments/assets/d54a231a-38ec-467c-9fb4-07d227b61697" />
+<img width="1920" height="1080" alt="Screenshot (1307)" src="https://github.com/user-attachments/assets/d1036c38-6f5f-4004-9a2e-b2ed83dd5009" />
+<img width="1920" height="1080" alt="Screenshot (1308)" src="https://github.com/user-attachments/assets/51c7a501-3bcc-479d-a17c-eaf35facdda2" />
+<img width="1920" height="1080" alt="Screenshot (1309)" src="https://github.com/user-attachments/assets/3c0275cb-a35d-4657-ba22-88cfa0721ff6" />
+<img width="1920" height="1080" alt="Screenshot (1310)" src="https://github.com/user-attachments/assets/ba35c474-0df3-4d7b-969b-245d2fca77bf" />
+
+
 ## Core Features
 
 The application is centered around a dashboard that provides a real-time view into the activities of four specialized agents:
