@@ -41,10 +41,6 @@ const ERC20_ABI = [
   "function symbol() view returns (string)"
 ];
 
-const SEI_TOKENS: { name: string; address: string }[] = [
-    // Add popular SEI tokens here. For now, we will use mainnet tokens for demonstration.
-];
-
 const ETH_TOKENS = [
   { name: "USDT", address: "0xdAC17F958D2ee523a2206206994597C13D831ec7" },
   { name: "USDC", address: "0xA0b86991C6218b36c1d19D4a2e9Eb0cE3606eB48" },
@@ -55,7 +51,7 @@ const ETH_TOKENS = [
 type PortfolioDataPoint = {
   asset: string;
   balance: string;
-  chainId: number;
+  network: string;
 }
 
 type DeFiActionPhase = "idle" | "analyzing" | "simulating" | "proposal_ready" | "executing";
@@ -65,7 +61,11 @@ export default function DashboardPage() {
   const { address, isConnected, isConnecting, chain } = useAccount();
   const { connect } = useConnect();
   const { disconnect } = useDisconnect();
-  const { data: nativeBalance, isLoading: isBalanceLoading } = useBalance({ address });
+
+  // Fetch balances for both Sei and Ethereum Mainnet
+  const { data: seiBalance, isLoading: isSeiBalanceLoading } = useBalance({ address, chainId: 1329 });
+  const { data: ethBalance, isLoading: isEthBalanceLoading } = useBalance({ address, chainId: 1 });
+
 
   const [activities, setActivities] = React.useState<Activity[]>([]);
   const [analysisResult, setAnalysisResult] = React.useState<DataSentinelAgentOutput | null>(null);
@@ -87,30 +87,28 @@ export default function DashboardPage() {
   const [defiPhase, setDeFiPhase] = React.useState<DeFiActionPhase>("idle");
   const [isClient, setIsClient] = React.useState(false);
 
-  const tokensToFetch = chain?.id === 1 ? ETH_TOKENS : SEI_TOKENS;
-
   const { data: tokenBalances, isLoading: isTokenBalanceLoading } = useReadContracts({
-    contracts: tokensToFetch.map(token => ({
+    contracts: ETH_TOKENS.map(token => ({
         address: token.address as `0x${string}`,
         abi: ERC20_ABI,
         functionName: 'balanceOf',
         args: [address],
-        chainId: chain?.id
+        chainId: 1 // Always fetch from Ethereum Mainnet
     })),
     query: {
-        enabled: isConnected && !!address && tokensToFetch.length > 0,
+        enabled: isConnected && !!address,
     }
   });
 
   const { data: tokenDecimals, isLoading: isTokenDecimalsLoading } = useReadContracts({
-    contracts: tokensToFetch.map(token => ({
+    contracts: ETH_TOKENS.map(token => ({
         address: token.address as `0x${string}`,
         abi: ERC20_ABI,
         functionName: 'decimals',
-        chainId: chain?.id
+        chainId: 1 // Always fetch from Ethereum Mainnet
     })),
      query: {
-        enabled: isConnected && !!address && tokensToFetch.length > 0,
+        enabled: isConnected && !!address,
     }
   });
 
@@ -378,12 +376,16 @@ export default function DashboardPage() {
       handleRefreshAnalysis();
       
       const fetchedPortfolio: PortfolioDataPoint[] = [];
-      if (nativeBalance) {
-          fetchedPortfolio.push({ asset: nativeBalance.symbol, balance: parseFloat(nativeBalance.formatted).toFixed(4), chainId: chain?.id ?? 0 });
+      if (seiBalance && parseFloat(seiBalance.formatted) > 0) {
+          fetchedPortfolio.push({ asset: seiBalance.symbol, balance: parseFloat(seiBalance.formatted).toFixed(4), network: "Sei" });
+      }
+
+      if (ethBalance && parseFloat(ethBalance.formatted) > 0) {
+          fetchedPortfolio.push({ asset: ethBalance.symbol, balance: parseFloat(ethBalance.formatted).toFixed(4), network: "Ethereum" });
       }
 
       if (tokenBalances && tokenDecimals) {
-        tokensToFetch.forEach((token, index) => {
+        ETH_TOKENS.forEach((token, index) => {
             const balanceResult = tokenBalances[index];
             const decimalResult = tokenDecimals[index];
 
@@ -395,7 +397,7 @@ export default function DashboardPage() {
                   fetchedPortfolio.push({
                       asset: token.name,
                       balance: parseFloat(formattedBalance).toFixed(4),
-                      chainId: chain?.id ?? 0,
+                      network: "Ethereum",
                   });
                 }
             }
@@ -404,13 +406,13 @@ export default function DashboardPage() {
       
       setPortfolioData(fetchedPortfolio);
       
-      if (!isBalanceLoading) {
+      if (!isSeiBalanceLoading && !isEthBalanceLoading && !isTokenBalanceLoading) {
         addActivity("Portfolio data loaded.", <DatabaseZap className="text-green-400" />);
       }
 
       toast({
           title: "Wallet Connected",
-          description: `Connected to address: ${address.substring(0, 6)}...${address.substring(address.length - 4)} on ${chain?.name}`,
+          description: `Connected to address: ${address.substring(0, 6)}...${address.substring(address.length - 4)}`,
       });
 
     } else {
@@ -418,7 +420,7 @@ export default function DashboardPage() {
         setAnalysisResult(null);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isConnected, address, chain?.id, chain?.name, nativeBalance, isBalanceLoading, tokenBalances, tokenDecimals]);
+  }, [isConnected, address, seiBalance, ethBalance, isSeiBalanceLoading, isEthBalanceLoading, tokenBalances, tokenDecimals]);
 
   const renderDeFiCardContent = () => {
     if (defiPhase === "analyzing" || defiPhase === "simulating" || defiPhase === "executing") {
@@ -474,7 +476,7 @@ export default function DashboardPage() {
   }
 
   const renderPortfolioContent = () => {
-    const isLoading = isConnecting || (isConnected && (isBalanceLoading || isTokenBalanceLoading || isTokenDecimalsLoading));
+    const isLoading = isConnecting || (isConnected && (isSeiBalanceLoading || isEthBalanceLoading || isTokenBalanceLoading || isTokenDecimalsLoading));
 
     if (isLoading) {
       return (
@@ -498,7 +500,7 @@ export default function DashboardPage() {
       return (
         <div className="flex flex-col items-center justify-center w-full h-full pt-8 text-center">
           <Wallet className="w-12 h-12 mb-4 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">No portfolio data found. Make a deposit to get started.</p>
+          <p className="text-sm text-muted-foreground">No portfolio data found for this address.</p>
         </div>
       )
     }
@@ -508,6 +510,7 @@ export default function DashboardPage() {
             <TableHeader>
                 <TableRow>
                     <TableHead>Asset</TableHead>
+                    <TableHead>Network</TableHead>
                     <TableHead className="text-right">Balance</TableHead>
                 </TableRow>
             </TableHeader>
@@ -515,6 +518,7 @@ export default function DashboardPage() {
                 {portfolioData.map((asset, index) => (
                     <TableRow key={index}>
                         <TableCell className="font-medium">{asset.asset}</TableCell>
+                        <TableCell>{asset.network}</TableCell>
                         <TableCell className="text-right">{asset.balance}</TableCell>
                     </TableRow>
                 ))}
@@ -770,7 +774,7 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle>Portfolio Overview</CardTitle>
                  <CardDescription>
-                  {isClient && isConnected && address ? `Portfolio for ${address.substring(0, 6)}...${address.substring(address.length - 4)} on ${chain?.name}` : 'Connect wallet to see portfolio'}
+                  {isClient && isConnected && address ? `Live wallet balance for ${address.substring(0, 6)}...${address.substring(address.length - 4)}` : 'Connect wallet to see portfolio'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
