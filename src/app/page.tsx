@@ -519,7 +519,7 @@ export default function DashboardPage() {
                   Data Sentinel: Intelligence Brief
                 </CardTitle>
                 <CardDescription>
-                  Continuous onchain & offchain analysis hub.
+                  Continuous onchain &amp; offchain analysis hub.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -547,7 +547,7 @@ export default function DashboardPage() {
                 )}
               </CardContent>
               <CardFooter>
-                 <Button variant="ghost" size="sm" onClick={() => handleRefreshAnalysis()} disabled={analysisLoading || !isConnected}>
+                 <Button variant="ghost" size="sm" onClick={() => handleRefreshAnalysis()} disabled={!isClient || analysisLoading || !isConnected}>
                   {analysisLoading ? <Loader className="w-4 h-4 mr-2 animate-spin" /> : null}
                   Refresh Analysis
                 </Button>
@@ -570,7 +570,7 @@ export default function DashboardPage() {
                   value={investmentGoal}
                   onChange={(e) => setInvestmentGoal(e.target.value)}
                   className="font-code"
-                  disabled={!isConnected || planLoading || isExecuting}
+                  disabled={!isClient || !isConnected || planLoading || isExecuting}
                 />
                  {planLoading ? (
                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -601,7 +601,7 @@ export default function DashboardPage() {
                   ) : null }
               </CardContent>
               <CardFooter className="flex-col items-start gap-4">
-                <Button onClick={handleGeneratePlan} disabled={planLoading || isExecuting || !isConnected}>
+                <Button onClick={handleGeneratePlan} disabled={!isClient || planLoading || isExecuting || !isConnected}>
                   {planLoading && <Loader className="w-4 h-4 mr-2 animate-spin" />}
                   Generate Plan
                 </Button>
@@ -613,7 +613,7 @@ export default function DashboardPage() {
                         <h4 className="font-semibold">Plan is ready for execution.</h4>
                         <p className="text-sm text-muted-foreground">The Orchestrator will now autonomously execute the generated plan.</p>
                       </div>
-                       <Button onClick={handleExecutePlan} disabled={isExecuting || !isConnected}>
+                       <Button onClick={handleExecutePlan} disabled={!isClient || isExecuting || !isConnected}>
                         <Play className="w-4 h-4 mr-2" />
                         Execute Plan Autonomously
                       </Button>
@@ -664,9 +664,9 @@ export default function DashboardPage() {
                       value={nftPrompt}
                       onChange={(e) => setNftPrompt(e.target.value)}
                       className="font-code"
-                      disabled={!isConnected || nftLoading || isExecuting}
+                      disabled={!isClient || !isConnected || nftLoading || isExecuting}
                     />
-                     <Button onClick={handleCreateNft} disabled={nftLoading || !isConnected || isExecuting} className="min-w-fit">
+                     <Button onClick={handleCreateNft} disabled={!isClient || nftLoading || !isConnected || isExecuting} className="min-w-fit">
                       {nftLoading ? <Loader className="w-4 h-4 animate-spin" /> : "Create NFT"}
                     </Button>
                  </div>
