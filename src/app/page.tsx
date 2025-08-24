@@ -332,17 +332,16 @@ export default function DashboardPage() {
 
       const fetchedPortfolio: PortfolioDataPoint[] = [];
       if (balance) {
-          // The 'value' in the chart is a USD amount. 
-          // We'd need a price feed to convert the SEI amount to USD.
-          // For now, we will just show the SEI balance directly on the chart.
-          // A real app would have a price oracle to convert asset amounts to USD.
+          // This is the live native SEI balance from the user's wallet.
           fetchedPortfolio.push({ asset: 'SEI', value: parseFloat(balance.formatted) });
       }
-      // In a real app, you would also fetch other token balances (e.g., USDC, SEIYAN)
-      // using an indexer API and add them to the fetchedPortfolio array.
-      // For example:
-      // const otherTokens = await getErc20Balances(address);
-      // otherTokens.forEach(token => fetchedPortfolio.push({ asset: token.symbol, value: token.usd_value }));
+      
+      // In a real app, you would fetch other token balances here using a data indexer API (e.g., Goldrush, Dune).
+      // Since we can't use API keys, we'll add some realistic sample data to demonstrate the UI.
+      // This sample data will be displayed alongside the live SEI balance.
+      fetchedPortfolio.push({ asset: 'USDC', value: 1250.75 });
+      fetchedPortfolio.push({ asset: 'SEIYAN', value: 5000000 });
+      fetchedPortfolio.push({ asset: 'KRYPT', value: 2500 });
       
       setPortfolioData(fetchedPortfolio);
       
@@ -445,48 +444,51 @@ export default function DashboardPage() {
 
     // Chart expects month/value, but we have asset/value. We will adapt.
     // For this demonstration, we'll chart assets on the X-axis.
-    // Note: The Y-axis shows the amount of the token, not its USD value.
+    // Note: The Y-axis shows the amount of the token, not its USD value. A real app would use a price oracle.
     return (
       <ChartContainer config={chartConfig} className="w-full min-h-[200px]">
-        <AreaChart
-          accessibilityLayer
-          data={portfolioData}
-          margin={{
-            left: 0,
-            right: 12,
-            top: 5,
-            bottom: 0,
-          }}
-        >
-          <CartesianGrid vertical={false} />
-          <XAxis
-            dataKey="asset"
-            tickLine={false}
-            axisLine={false}
-            tickMargin={8}
-          />
-           <YAxis
-            tickLine={false}
-            axisLine={false}
-            tickMargin={8}
-            tickCount={3}
-            tickFormatter={(value) => `${value}`}
-            domain={[0, 'dataMax + 1']}
-          />
-          <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
-          <defs>
-            <linearGradient id="fillValue" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="var(--color-value)" stopOpacity={0.8} />
-              <stop offset="95%" stopColor="var(--color-value)" stopOpacity={0.1} />
-            </linearGradient>
-          </defs>
-          <Area
-            dataKey="value"
-            type="natural"
-            fill="url(#fillValue)"
-            stroke="var(--color-value)"
-          />
-        </AreaChart>
+        <ResponsiveContainer>
+          <AreaChart
+            accessibilityLayer
+            data={portfolioData}
+            margin={{
+              left: 0,
+              right: 12,
+              top: 5,
+              bottom: 0,
+            }}
+          >
+            <CartesianGrid vertical={false} />
+            <XAxis
+              dataKey="asset"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+            />
+             <YAxis
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              tickCount={3}
+              tickFormatter={(value) => `${value}`}
+              domain={[0, 'dataMax + 1']}
+            />
+            <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
+            <defs>
+              <linearGradient id="fillValue" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="var(--color-value)" stopOpacity={0.8} />
+                <stop offset="95%" stopColor="var(--color-value)" stopOpacity={0.1} />
+              </linearGradient>
+            </defs>
+            <Area
+              dataKey="value"
+              type="natural"
+              fill="url(#fillValue)"
+              stroke="var(--color-value)"
+              name="Amount"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
       </ChartContainer>
     );
   }
@@ -801,3 +803,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
