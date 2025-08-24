@@ -1,5 +1,81 @@
-# Firebase Studio
+# Sei Sentinels: Autonomous Agent Network
 
-This is a NextJS starter in Firebase Studio.
+Sei Sentinels is a sophisticated, AI-powered multi-agent network built on the Sei blockchain. It provides a suite of autonomous agents that can perform complex tasks, including on-chain data analysis, financial strategy execution, and creative asset generation. The platform showcases a future where users can delegate high-level goals to a network of sovereign agents that work continuously and transparently on their behalf.
 
-To get started, take a look at src/app/page.tsx.
+## Core Features
+
+The application is centered around a dashboard that provides a real-time view into the activities of four specialized agents:
+
+### 1. Data Sentinel: Intelligence Brief
+The Data Sentinel is the network's on-chain and off-chain intelligence hub. It continuously analyzes market data to provide actionable insights.
+
+- **How it Works**: The agent receives a query for market analysis. It then uses its integrated tools to fetch on-chain data (like whale movements and transaction volumes) and off-chain data (like social media sentiment) to generate a comprehensive intelligence brief.
+- **File Location**: The logic for this agent is located in `src/ai/flows/data-sentinel-agent.ts`.
+
+### 2. Orchestrator Agent: Commander
+The Orchestrator is the master agent. It translates a user's high-level goals into concrete, multi-step plans to be executed by other agents.
+
+- **How it Works**: A user provides a goal (e.g., "Maximize my DeFi yield"). The Orchestrator uses a planning framework to break this down into a sequence of tasks, such as "Query the market for yield opportunities," "Propose a trade to rebalance assets," and "Pay the Data Sentinel for its services."
+- **File Location**: The logic is defined in `src/ai/flows/orchestrator-agent.ts`.
+
+### 3. DeFi & Payments Agent: Financial Actor
+This agent is the network's autonomous financial arm. It executes trades, manages liquidity, and handles payments between agents without direct user intervention.
+
+- **How it Works**: Triggered by the Orchestrator's plan, this agent follows a dynamic workflow: it analyzes market data, simulates transactions for safety, executes trades, and provides liquidity. It operates continuously to achieve the user's financial goals.
+- **File Location**: The core logic is in `src/ai/flows/defi-payments-agent.ts`. Its workflow is managed in the main UI file, `src/app/page.tsx`.
+
+### 4. Creative Agent: Art Broker
+The Creative Agent demonstrates the network's ability to handle generative tasks. It can create, mint, and list a unique NFT based on a simple text prompt.
+
+- **How it Works**: The agent takes a user's prompt, uses a generative AI model to create an image, mints that image as an NFT on the Sei network, lists it on a simulated marketplace, and notifies the user.
+- **File Location**: The agent's flow is located in `src/ai/flows/create-nft-from-prompt.ts`.
+
+## Technology & Tool Integration
+
+This project is built on a powerful stack of tools designed to enable autonomous agents on the Sei blockchain.
+
+### Sei Mainnet Integration
+The application is configured to connect directly to the Sei mainnet, allowing users to view their real asset balances and for agents to simulate on-chain interactions.
+- **File Locations**:
+    - `src/components/web3-provider.tsx`: Configures the `wagmi` provider to include the Sei mainnet (chain ID `1329`).
+    - `src/app/page.tsx`: Connects to the user's wallet, fetches balances from both Sei and Ethereum, and displays a "Sei Mainnet" tag in the UI for clarity.
+
+### AI & Generative Models (Genkit)
+The intelligence of every agent is powered by Google's Generative AI models, orchestrated using the **Genkit** framework. Genkit allows us to define structured AI flows, prompts, and tools that the agents use to reason and act.
+- **File Locations**:
+    - `src/ai/genkit.ts`: The central configuration file for Genkit, setting the default AI model.
+    - `src/ai/flows/*.ts`: Each file in this directory defines an agent's specific logic, input/output schemas, and AI prompts.
+
+### Cambrian & Sei Agent Kit
+The **Orchestrator Agent** is designed based on the principles of the Cambrian Agent Kit. This framework enables the creation of hierarchical task plans from high-level goals.
+- **How it Works**: The agent's execution log explicitly mentions using the "Cambrian Agent Kit for hierarchical task planning," demonstrating how it breaks a complex goal into smaller, delegable tasks.
+- **File Location**: The planning logic is simulated within `src/ai/flows/orchestrator-agent.ts`.
+
+### Sei MCP Server
+The Sei Multi-Chain Pointer (MCP) Server is a critical component for agent state management. The agents are designed to update their status and plans on-chain via this server.
+- **How it Works**: The **Orchestrator Agent's** execution log simulates updating its generated plan to the Sei blockchain via the MCP Server, ensuring the agent's state is persistent and verifiable.
+- **File Location**: This interaction is described in the logs generated by `src/ai/flows/orchestrator-agent.ts`.
+
+### ElizaOS
+The agents gain their on-chain sovereignty through an agentic wallet powered by ElizaOS. This allows them to execute transactions autonomously.
+- **How it Works**: The **Orchestrator Agent's** log confirms that it begins "autonomous execution with ElizaOS wallet," signifying that all subsequent on-chain actions are performed by the agent itself, not the user.
+- **File Location**: The use of ElizaOS is part of the simulated execution log in `src/ai/flows/orchestrator-agent.ts`.
+
+### Hive Intelligence & Rivalz Oracles
+These tools form the core of the **Data Sentinel's** intelligence gathering capabilities.
+- **How it Works**: The Data Sentinel's `getMarketData` tool is designed to make calls to **Hive** for on-chain data (like whale movements) and **Rivalz** for off-chain data (like social sentiment). The simulated data returned by this tool reflects the kind of rich information these oracles provide.
+- **File Location**: The tool definition and simulated data are located in `src/ai/flows/data-sentinel-agent.ts`.
+
+### Crossmint GOAT SDK
+The GOAT (Greatest of All Tools) SDK is the primary engine for all on-chain financial transactions.
+- **How it Works**: The **DeFi & Payments Agent** simulates using the GOAT SDK to execute trades and process agent-to-agent payments. The **Creative Agent** simulates using it to mint NFTs. The activity logs explicitly mention the SDK, showing its role as the financial execution layer.
+- **File Locations**: The SDK's usage is simulated in `src/ai/flows/defi-payments-agent.ts` and `src/ai/flows/create-nft-from-prompt.ts`.
+
+### AIDN (Autonomous Inter-Agent Delegation Network)
+AIDN represents the communication layer, particularly for relaying information back to the user.
+- **How it Works**: The **Creative Agent** and **Orchestrator Agent** both conclude their workflows by delegating a task to a "Consumer Agent." This agent's role is to notify the user via platforms like Telegram, which is the core functionality of AIDN.
+- **File Location**: The delegation to this consumer-facing agent is described in the logs within `src/ai/flows/create-nft-from-prompt.ts` and the plan in `src/ai/flows/orchestrator-agent.ts`.
+
+### Cookie.fun
+While not directly implemented in the agent logic, `cookie.fun` represents the logical next step for the **Consumer Agent's** capabilities.
+- **How it Works**: After an NFT is created and listed, the Consumer Agent could leverage Cookie.fun's on-chain marketing and affiliate tools to promote the asset and drive user acquisition, creating a fully closed-loop, autonomous marketing cycle.
