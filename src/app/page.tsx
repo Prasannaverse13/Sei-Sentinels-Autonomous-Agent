@@ -5,8 +5,9 @@ import Image from "next/image";
 import * as React from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { Cpu, DatabaseZap, Bot, Palette, Loader, Server, Wallet, BrainCircuit, Banknote, Package, Send, Play, CheckCircle2 } from "lucide-react";
-import { useAccount, useConnect, useDisconnect, useBalance } from 'wagmi';
+import { useAccount, useConnect, useDisconnect, useBalance, useReadContracts } from 'wagmi';
 import { injected } from 'wagmi/connectors';
+import { ethers } from "ethers";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,19 +35,37 @@ const chartConfig = {
   },
 };
 
+const ERC20_ABI = [
+  "function balanceOf(address owner) view returns (uint256)",
+  "function decimals() view returns (uint8)",
+  "function symbol() view returns (string)"
+];
+
+const SEI_TOKENS = [
+    // Add popular SEI tokens here. For now, we will use mainnet tokens for demonstration.
+];
+
+const ETH_TOKENS = [
+  { name: "USDT", address: "0xdAC17F958D2ee523a2206206994597C13D831ec7" },
+  { name: "USDC", address: "0xA0b86991C6218b36c1d19D4a2e9Eb0cE3606eB48" },
+  { name: "DAI",  address: "0x6B175474E89094C44Da98b954EedeAC495271d0F" }
+];
+
+
 type PortfolioDataPoint = {
   asset: string;
-  value: number;
+  balance: string;
+  chainId: number;
 }
 
 type DeFiActionPhase = "idle" | "analyzing" | "simulating" | "proposal_ready" | "executing";
 
 export default function DashboardPage() {
   const { toast } = useToast();
-  const { address, isConnected, isConnecting } = useAccount();
+  const { address, isConnected, isConnecting, chain } = useAccount();
   const { connect } = useConnect();
   const { disconnect } = useDisconnect();
-  const { data: balance, isLoading: isBalanceLoading } = useBalance({ address });
+  const { data: nativeBalance, isLoading: isBalanceLoading } = useBalance({ address });
 
   const [activities, setActivities] = React.useState<Activity[]>([]);
   const [analysisResult, setAnalysisResult] = React.useState<DataSentinelAgentOutput | null>(null);
@@ -67,6 +86,34 @@ export default function DashboardPage() {
   const [showProposalDialog, setShowProposalDialog] = React.useState(false);
   const [defiPhase, setDeFiPhase] = React.useState<DeFiActionPhase>("idle");
   const [isClient, setIsClient] = React.useState(false);
+
+  const tokensToFetch = chain?.id === 1 ? ETH_TOKENS : SEI_TOKENS;
+
+  const { data: tokenBalances, isLoading: isTokenBalanceLoading } = useReadContracts({
+    contracts: tokensToFetch.map(token => ({
+        address: token.address as `0x${string}`,
+        abi: ERC20_ABI,
+        functionName: 'balanceOf',
+        args: [address],
+        chainId: chain?.id
+    })),
+    query: {
+        enabled: isConnected && !!address && tokensToFetch.length > 0,
+    }
+  });
+
+  const { data: tokenDecimals, isLoading: isTokenDecimalsLoading } = useReadContracts({
+    contracts: tokensToFetch.map(token => ({
+        address: token.address as `0x${string}`,
+        abi: ERC20_ABI,
+        functionName: 'decimals',
+        chainId: chain?.id
+    })),
+     query: {
+        enabled: isConnected && !!address && tokensToFetch.length > 0,
+    }
+  });
+
 
   React.useEffect(() => {
     setIsClient(true);
@@ -329,19 +376,31 @@ export default function DashboardPage() {
     if (isConnected && address) {
       addActivity("Wallet connected successfully.", <Wallet className="text-green-400" />, `Address: ${address.substring(0, 6)}...`);
       handleRefreshAnalysis();
-
-      const fetchedPortfolio: PortfolioDataPoint[] = [];
-      if (balance) {
-          // This is the live native SEI balance from the user's wallet.
-          fetchedPortfolio.push({ asset: 'SEI', value: parseFloat(balance.formatted) });
-      }
       
-      // In a real app, you would fetch other token balances here using a data indexer API (e.g., Goldrush, Dune).
-      // Since we can't use API keys, we'll add some realistic sample data to demonstrate the UI.
-      // This sample data will be displayed alongside the live SEI balance.
-      fetchedPortfolio.push({ asset: 'USDC', value: 1250.75 });
-      fetchedPortfolio.push({ asset: 'SEIYAN', value: 5000000 });
-      fetchedPortfolio.push({ asset: 'KRYPT', value: 2500 });
+      const fetchedPortfolio: PortfolioDataPoint[] = [];
+      if (nativeBalance) {
+          fetchedPortfolio.push({ asset: nativeBalance.symbol, balance: parseFloat(nativeBalance.formatted).toFixed(4), chainId: chain?.id ?? 0 });
+      }
+
+      if (tokenBalances && tokenDecimals) {
+        tokensToFetch.forEach((token, index) => {
+            const balanceResult = tokenBalances[index];
+            const decimalResult = tokenDecimals[index];
+
+            if (balanceResult.status === 'success' && decimalResult.status === 'success') {
+                const rawBalance = balanceResult.result as bigint;
+                const decimals = decimalResult.result as number;
+                const formattedBalance = ethers.formatUnits(rawBalance, decimals);
+                if (parseFloat(formattedBalance) > 0) {
+                  fetchedPortfolio.push({
+                      asset: token.name,
+                      balance: parseFloat(formattedBalance).toFixed(4),
+                      chainId: chain?.id ?? 0,
+                  });
+                }
+            }
+        });
+      }
       
       setPortfolioData(fetchedPortfolio);
       
@@ -359,7 +418,7 @@ export default function DashboardPage() {
         setAnalysisResult(null);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isConnected, address, balance, isBalanceLoading]);
+  }, [isConnected, address, nativeBalance, isBalanceLoading, tokenBalances, tokenDecimals]);
 
   const renderDeFiCardContent = () => {
     if (defiPhase === "analyzing" || defiPhase === "simulating" || defiPhase === "executing") {
@@ -415,7 +474,9 @@ export default function DashboardPage() {
   }
 
   const renderPortfolioContent = () => {
-    if (isConnecting || (isConnected && isBalanceLoading)) {
+    const isLoading = isConnecting || (isConnected && (isBalanceLoading || isTokenBalanceLoading || isTokenDecimalsLoading));
+
+    if (isLoading) {
       return (
         <div className="flex flex-col items-center justify-center w-full h-full pt-8 text-center">
             <Loader className="w-12 h-12 mb-4 text-muted-foreground animate-spin" />
@@ -442,54 +503,23 @@ export default function DashboardPage() {
       )
     }
 
-    // Chart expects month/value, but we have asset/value. We will adapt.
-    // For this demonstration, we'll chart assets on the X-axis.
-    // Note: The Y-axis shows the amount of the token, not its USD value. A real app would use a price oracle.
     return (
-      <ChartContainer config={chartConfig} className="w-full min-h-[200px]">
-        <ResponsiveContainer>
-          <AreaChart
-            accessibilityLayer
-            data={portfolioData}
-            margin={{
-              left: 0,
-              right: 12,
-              top: 5,
-              bottom: 0,
-            }}
-          >
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="asset"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-            />
-             <YAxis
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              tickCount={3}
-              tickFormatter={(value) => `${value}`}
-              domain={[0, 'dataMax + 1']}
-            />
-            <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
-            <defs>
-              <linearGradient id="fillValue" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="var(--color-value)" stopOpacity={0.8} />
-                <stop offset="95%" stopColor="var(--color-value)" stopOpacity={0.1} />
-              </linearGradient>
-            </defs>
-            <Area
-              dataKey="value"
-              type="natural"
-              fill="url(#fillValue)"
-              stroke="var(--color-value)"
-              name="Amount"
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      </ChartContainer>
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHead>Asset</TableHead>
+                    <TableHead className="text-right">Balance</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {portfolioData.map((asset, index) => (
+                    <TableRow key={index}>
+                        <TableCell className="font-medium">{asset.asset}</TableCell>
+                        <TableCell className="text-right">{asset.balance}</TableCell>
+                    </TableRow>
+                ))}
+            </TableBody>
+        </Table>
     );
   }
   
@@ -740,11 +770,11 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle>Portfolio Overview</CardTitle>
                  <CardDescription>
-                  {isClient && isConnected && address ? `Portfolio data for ${address.substring(0, 6)}...` : 'Connect wallet to see portfolio'}
+                  {isClient && isConnected && address ? `Portfolio for ${address.substring(0, 6)}...${address.substring(address.length - 4)} on ${chain?.name}` : 'Connect wallet to see portfolio'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="w-full h-[200px]">
+                <div className="w-full min-h-[200px]">
                  {renderPortfolioContent()}
                 </div>
               </CardContent>

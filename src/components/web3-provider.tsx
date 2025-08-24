@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { WagmiProvider, createConfig, http } from 'wagmi';
-import { sei } from 'wagmi/chains';
+import { sei, mainnet } from 'wagmi/chains';
 import { injected } from 'wagmi/connectors';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -31,12 +31,13 @@ const seiChain = {
 
 
 export const config = createConfig({
-  chains: [seiChain],
+  chains: [seiChain, mainnet],
   connectors: [
     injected(),
   ],
   transports: {
     [seiChain.id]: http(),
+    [mainnet.id]: http(),
   },
 })
 
