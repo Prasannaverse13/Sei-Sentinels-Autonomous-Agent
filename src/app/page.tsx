@@ -1,4 +1,3 @@
-
 "use client";
 
 import Image from "next/image";
@@ -682,7 +681,7 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                    <SeiWhale className="w-6 h-6 text-primary" />
-                  DeFi & Payments Agent: Financial Actor
+                  DeFi &amp; Payments Agent: Financial Actor
                 </CardTitle>
                 <CardDescription>
                   Trigger autonomous, AI-driven portfolio actions and agent-to-agent payments.
@@ -741,7 +740,7 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Package className="w-6 h-6 text-primary" />
-                  MCP Server & Agent Activity
+                  MCP Server &amp; Agent Activity
                 </CardTitle>
                 <CardDescription>Live feed of Orchestrator and Agent actions.</CardDescription>
               </CardHeader>
@@ -793,7 +792,7 @@ export default function DashboardPage() {
             <AlertDialogHeader>
               <AlertDialogTitle>Transaction Proposal</AlertDialogTitle>
               <AlertDialogDescription>
-                The DeFi & Payments Agent has analyzed the market and proposes the following action. Please review and confirm.
+                The DeFi &amp; Payments Agent has analyzed the market and proposes the following action. Please review and confirm.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <div className="my-4">
@@ -828,7 +827,7 @@ export default function DashboardPage() {
             </div>
             <AlertDialogFooter>
               <AlertDialogCancel onClick={handleCancelProposal}>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleApproveTransaction}>Approve & Execute</AlertDialogAction>
+              <AlertDialogAction onClick={handleApproveTransaction}>Approve &amp; Execute</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
@@ -837,5 +836,7 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
 
     
