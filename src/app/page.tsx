@@ -41,7 +41,7 @@ const ERC20_ABI = [
   "function symbol() view returns (string)"
 ];
 
-const SEI_TOKENS = [
+const SEI_TOKENS: { name: string; address: string }[] = [
     // Add popular SEI tokens here. For now, we will use mainnet tokens for demonstration.
 ];
 
@@ -133,7 +133,7 @@ export default function DashboardPage() {
         disconnect();
         addActivity("Wallet disconnected.", <Wallet className="text-red-400" />);
     } else {
-        addActivity("Connecting to Compass Wallet...", <Wallet className="text-blue-400" />);
+        addActivity("Connecting to Wallet...", <Wallet className="text-blue-400" />);
         connect({ connector: injected() });
     }
   };
@@ -410,7 +410,7 @@ export default function DashboardPage() {
 
       toast({
           title: "Wallet Connected",
-          description: `Connected to address: ${address.substring(0, 6)}...${address.substring(address.length - 4)}`,
+          description: `Connected to address: ${address.substring(0, 6)}...${address.substring(address.length - 4)} on ${chain?.name}`,
       });
 
     } else {
@@ -418,7 +418,7 @@ export default function DashboardPage() {
         setAnalysisResult(null);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isConnected, address, nativeBalance, isBalanceLoading, tokenBalances, tokenDecimals]);
+  }, [isConnected, address, chain?.id, chain?.name, nativeBalance, isBalanceLoading, tokenBalances, tokenDecimals]);
 
   const renderDeFiCardContent = () => {
     if (defiPhase === "analyzing" || defiPhase === "simulating" || defiPhase === "executing") {
