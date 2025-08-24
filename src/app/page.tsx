@@ -339,7 +339,6 @@ export default function DashboardPage() {
   React.useEffect(() => {
     if (isConnected && address) {
       addActivity("Wallet connected successfully.", <Wallet className="text-green-400" />, `Address: ${address.substring(0, 6)}...`);
-      // handleRefreshAnalysis(); // Removed to prevent rate-limiting
       
       const fetchedPortfolio: PortfolioDataPoint[] = [];
       if (seiBalance) {
@@ -509,9 +508,11 @@ export default function DashboardPage() {
           <Button variant="outline" className="flex items-center gap-2">
             <Wallet className="w-4 h-4" />
             <span>{address ? `${address.substring(0, 6)}...${address.substring(address.length - 4)}` : ''}</span>
-            {chain && (
+            {chain?.id === 1329 ? (
+               <Badge variant="secondary" className="ml-2 text-green-400 border-green-400/50">Sei Mainnet</Badge>
+            ) : chain ? (
               <Badge variant="secondary" className="ml-2">{chain.name}</Badge>
-            )}
+            ) : null}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
