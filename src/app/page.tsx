@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from "next/image";
@@ -331,13 +332,23 @@ export default function DashboardPage() {
 
       const fetchedPortfolio: PortfolioDataPoint[] = [];
       if (balance) {
+          // The 'value' in the chart is a USD amount. 
+          // We'd need a price feed to convert the SEI amount to USD.
+          // For now, we will just show the SEI balance directly on the chart.
+          // A real app would have a price oracle to convert asset amounts to USD.
           fetchedPortfolio.push({ asset: 'SEI', value: parseFloat(balance.formatted) });
       }
-      fetchedPortfolio.push({ asset: 'USDC', value: 1250.75 });
-      fetchedPortfolio.push({ asset: 'SEIYAN', value: 50.0 * 0.25 });
+      // In a real app, you would also fetch other token balances (e.g., USDC, SEIYAN)
+      // using an indexer API and add them to the fetchedPortfolio array.
+      // For example:
+      // const otherTokens = await getErc20Balances(address);
+      // otherTokens.forEach(token => fetchedPortfolio.push({ asset: token.symbol, value: token.usd_value }));
       
       setPortfolioData(fetchedPortfolio);
-      addActivity("Portfolio data loaded.", <DatabaseZap className="text-green-400" />);
+      
+      if (!isBalanceLoading) {
+        addActivity("Portfolio data loaded.", <DatabaseZap className="text-green-400" />);
+      }
 
       toast({
           title: "Wallet Connected",
@@ -349,7 +360,7 @@ export default function DashboardPage() {
         setAnalysisResult(null);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isConnected, address, balance]);
+  }, [isConnected, address, balance, isBalanceLoading]);
 
   const renderDeFiCardContent = () => {
     if (defiPhase === "analyzing" || defiPhase === "simulating" || defiPhase === "executing") {
@@ -434,6 +445,7 @@ export default function DashboardPage() {
 
     // Chart expects month/value, but we have asset/value. We will adapt.
     // For this demonstration, we'll chart assets on the X-axis.
+    // Note: The Y-axis shows the amount of the token, not its USD value.
     return (
       <ChartContainer config={chartConfig} className="w-full min-h-[200px]">
         <AreaChart
@@ -458,8 +470,8 @@ export default function DashboardPage() {
             axisLine={false}
             tickMargin={8}
             tickCount={3}
-            tickFormatter={(value) => `$${value}`}
-            domain={[0, 'dataMax + 100']}
+            tickFormatter={(value) => `${value}`}
+            domain={[0, 'dataMax + 1']}
           />
           <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
           <defs>
