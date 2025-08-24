@@ -25,6 +25,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 
 
 const chartConfig = {
@@ -338,11 +339,11 @@ export default function DashboardPage() {
       handleRefreshAnalysis();
       
       const fetchedPortfolio: PortfolioDataPoint[] = [];
-      if (seiBalance && parseFloat(seiBalance.formatted) > 0) {
+      if (seiBalance) {
           fetchedPortfolio.push({ asset: seiBalance.symbol, balance: parseFloat(seiBalance.formatted).toFixed(4), network: "Sei" });
       }
 
-      if (ethBalance && parseFloat(ethBalance.formatted) > 0) {
+      if (ethBalance) {
           fetchedPortfolio.push({ asset: ethBalance.symbol, balance: parseFloat(ethBalance.formatted).toFixed(4), network: "Ethereum" });
       }
 
@@ -487,13 +488,16 @@ export default function DashboardPage() {
     }
     
     return (
-        <Button variant="outline" className="flex items-center gap-2" onClick={handleConnectWallet} disabled={isConnecting}>
+        <Button variant="outline" className="flex items-center gap-2" onClick={handleConnectWallet} disabled={isClient && isConnecting}>
           {isConnecting ? (
              <Loader className="w-4 h-4 animate-spin" />
           ) : (
             <Wallet className="w-4 h-4" />
           )}
           <span>{isConnected && address ? `${address.substring(0, 6)}...${address.substring(address.length - 4)}` : "Connect Wallet"}</span>
+           {isConnected && chain && (
+              <Badge variant="secondary" className="ml-2">{chain.name}</Badge>
+           )}
         </Button>
     )
   }
@@ -743,3 +747,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
