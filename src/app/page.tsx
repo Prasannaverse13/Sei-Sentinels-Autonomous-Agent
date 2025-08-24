@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from "next/image";
@@ -338,7 +339,7 @@ export default function DashboardPage() {
   React.useEffect(() => {
     if (isConnected && address) {
       addActivity("Wallet connected successfully.", <Wallet className="text-green-400" />, `Address: ${address.substring(0, 6)}...`);
-      handleRefreshAnalysis();
+      // handleRefreshAnalysis(); // Removed to prevent rate-limiting
       
       const fetchedPortfolio: PortfolioDataPoint[] = [];
       if (seiBalance) {
@@ -567,7 +568,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 ) : (
-                   <p className="text-sm text-muted-foreground">Connect your wallet to get the latest intelligence brief.</p>
+                   <p className="text-sm text-muted-foreground">Connect your wallet and click Refresh to get the latest intelligence brief.</p>
                 )}
               </CardContent>
               <CardFooter>
@@ -767,5 +768,7 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
 
     
